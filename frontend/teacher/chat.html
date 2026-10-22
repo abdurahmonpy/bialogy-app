@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat | O'qituvchi Portali</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .chat-scroll::-webkit-scrollbar { width: 5px; }
+    .chat-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Teacher Sidebar Container -->
+    <div id="teacher-sidebar"></div>
+
+    <!-- Main Content Area: Chat Window -->
+    <main class="flex-1 p-3 lg:p-6 flex flex-col h-screen overflow-hidden">
+      
+      <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm flex-1 flex flex-col lg:flex-row overflow-hidden">
+        
+        <!-- Channels List -->
+        <div class="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-100 flex flex-col flex-shrink-0">
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-base font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="message-square" class="w-5 h-5 text-indigo-600"></i>
+              O'quvchilar va Guruhlar
+            </h2>
+            <span class="px-2 py-0.5 bg-indigo-50 text-indigo-700 text-xs font-bold rounded-full">Ustoz Chat</span>
+          </div>
+
+          <div class="p-2 space-y-1.5 overflow-y-auto">
+            <!-- Channel: Jasurbek -->
+            <button onclick="selectTeacherChannel('teacher')" id="ch-teacher" class="w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100">
+              <div class="w-11 h-11 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center flex-shrink-0">
+                J
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-0.5">
+                  <h4 class="text-xs font-bold text-slate-800 truncate">Jasurbek Aliyev</h4>
+                  <span class="text-[10px] text-slate-400">8-A</span>
+                </div>
+                <p class="text-[11px] text-slate-500 truncate">O'quvchi shaxsiy yozishmasi</p>
+              </div>
+            </button>
+
+            <!-- Channel: Class Group -->
+            <button onclick="selectTeacherChannel('group')" id="ch-group" class="w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left">
+              <div class="w-11 h-11 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0">
+                <i data-lucide="users" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-0.5">
+                  <h4 class="text-xs font-bold text-slate-800 truncate">8-A Biologiya guruhi</h4>
+                  <span class="text-[10px] text-slate-400">Guruh</span>
+                </div>
+                <p class="text-[11px] text-slate-500 truncate">Umumiy sinf e'lonlari</p>
+              </div>
+            </button>
+
+            <!-- Channel: AI Assistant -->
+            <button onclick="selectTeacherChannel('ai')" id="ch-ai" class="w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left">
+              <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0">
+                <i data-lucide="sparkles" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-0.5">
+                  <h4 class="text-xs font-bold text-slate-800 truncate">AI Metodik Maslahatchi</h4>
+                  <span class="text-[10px] text-purple-600 font-semibold">Gemini</span>
+                </div>
+                <p class="text-[11px] text-slate-500 truncate">Pedagogik savollar va metodika</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Chat Area -->
+        <div class="flex-1 flex flex-col h-full overflow-hidden">
+          
+          <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-white flex-shrink-0">
+            <div class="flex items-center gap-3">
+              <div id="header-avatar" class="w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center">
+                J
+              </div>
+              <div>
+                <h3 id="header-title" class="text-sm font-bold text-slate-800">Jasurbek Aliyev</h3>
+                <p id="header-desc" class="text-[11px] text-slate-400">8-A sinf o'quvchisi &bull; Faol</p>
+              </div>
+            </div>
+          </div>
+
+          <div id="teacher-msg-container" class="flex-1 p-4 lg:p-6 overflow-y-auto space-y-4 chat-scroll bg-slate-50/50">
+            <!-- Messages rendered dynamically -->
+          </div>
+
+          <div class="p-3 lg:p-4 bg-white border-t border-slate-100 flex-shrink-0">
+            <form id="teacher-chat-form" class="flex items-center gap-2">
+              <input type="text" id="teacher-msg-input" required placeholder="Xabarni yozing..."
+                class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+              
+              <button type="submit" class="p-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl shadow-md shadow-indigo-500/20 transition flex items-center justify-center flex-shrink-0">
+                <i data-lucide="send" class="w-4 h-4"></i>
+              </button>
+            </form>
+          </div>
+
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/teacher-nav.js"></script>
+  <script>
+    const currentUser = Auth.requireAuth("teacher");
+    renderTeacherSidebar("Chat");
+
+    let activeChannel = "teacher"; // 'teacher' (with Jasurbek), 'group', 'ai'
+    const container = document.getElementById("teacher-msg-container");
+    const input = document.getElementById("teacher-msg-input");
+
+    function selectTeacherChannel(ch) {
+      activeChannel = ch;
+      ['teacher', 'group', 'ai'].forEach(c => {
+        const btn = document.getElementById(`ch-${c}`);
+        if (c === ch) {
+          btn.className = "w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100";
+        } else {
+          btn.className = "w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left";
+        }
+      });
+
+      const title = document.getElementById("header-title");
+      const desc = document.getElementById("header-desc");
+      const avatar = document.getElementById("header-avatar");
+
+      if (ch === "teacher") {
+        title.textContent = "Jasurbek Aliyev";
+        desc.textContent = "8-A sinf o'quvchisi • Faol";
+        avatar.className = "w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center";
+        avatar.innerHTML = "J";
+      } else if (ch === "group") {
+        title.textContent = "8-A Biologiya guruhi";
+        desc.textContent = "Barcha 8-A sinf o'quvchilari uchun umumiy chat";
+        avatar.className = "w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center";
+        avatar.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i>`;
+      } else {
+        title.textContent = "AI Metodik Maslahatchi";
+        desc.textContent = "Darsliklar va metodika bo'yicha Gemini AI";
+        avatar.className = "w-10 h-10 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center";
+        avatar.innerHTML = `<i data-lucide="sparkles" class="w-5 h-5"></i>`;
+      }
+
+      lucide.createIcons();
+      loadTeacherMessages();
+    }
+
+    async function loadTeacherMessages() {
+      container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Xabarlar yuklanmoqda...</div>`;
+
+      try {
+        const res = await fetch(`/api/chat/messages?channel=${activeChannel}&userId=user-stud-1`);
+        const messages = await res.json();
+
+        if (!messages || messages.length === 0) {
+          container.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Ushbu suhbatda hali xabarlar yo'q</div>`;
+          return;
+        }
+
+        container.innerHTML = messages.map(m => {
+          const isTeacher = m.senderRole === "teacher" || m.senderId === currentUser?.id;
+          if (isTeacher) {
+            return `
+              <div class="flex justify-end gap-2.5">
+                <div class="max-w-md bg-indigo-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm text-xs leading-relaxed">
+                  <div class="font-bold text-[10px] text-indigo-200 mb-0.5">Siz (Ustoz)</div>
+                  <div>${m.text}</div>
+                  <div class="text-[9px] text-indigo-300 text-right mt-1">${m.time || 'Hozir'}</div>
+                </div>
+              </div>
+            `;
+          } else {
+            return `
+              <div class="flex justify-start gap-2.5">
+                <div class="w-8 h-8 rounded-full bg-emerald-600 text-white font-bold text-xs flex items-center justify-center flex-shrink-0 mt-1">
+                  ${m.senderName?.[0] || 'O'}
+                </div>
+                <div class="max-w-md bg-white border border-slate-200/80 p-3.5 rounded-2xl rounded-tl-none shadow-sm text-xs text-slate-700 leading-relaxed">
+                  <div class="font-bold text-[11px] text-slate-800 mb-0.5">${m.senderName || 'O\'quvchi'}</div>
+                  <div class="whitespace-pre-line">${m.text}</div>
+                  <div class="text-[9px] text-slate-400 text-right mt-1">${m.time || 'Hozir'}</div>
+                </div>
+              </div>
+            `;
+          }
+        }).join("");
+
+        container.scrollTop = container.scrollHeight;
+      } catch (e) {
+        container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Xatolik yuz berdi</div>`;
+      }
+    }
+
+    document.getElementById("teacher-chat-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (!text) return;
+      input.value = "";
+
+      const nowTime = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+
+      try {
+        await fetch("/api/chat/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel: activeChannel,
+            senderId: currentUser.id,
+            senderName: currentUser.fullName || "Aziza Rahimova",
+            senderRole: "teacher",
+            text: text
+          })
+        });
+        loadTeacherMessages();
+      } catch (err) {
+        console.error("Chat error:", err);
+      }
+    });
+
+    selectTeacherChannel("teacher");
+  </script>
+</body>
+</html>

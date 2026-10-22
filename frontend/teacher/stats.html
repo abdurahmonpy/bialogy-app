@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Statistika | O'qituvchi Portali</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Teacher Sidebar Container -->
+    <div id="teacher-sidebar"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 lg:p-8 overflow-y-auto">
+      
+      <!-- Page Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold mb-1">
+            <i data-lucide="bar-chart-3" class="w-3.5 h-3.5"></i>
+            Tahlil va Dinamika
+          </div>
+          <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Statistika va Natijalar</h1>
+          <p class="text-xs text-slate-500">O'quvchilarning bilim ko'rsatkichlari, o'rtacha ballar va faollik darajasi</p>
+        </div>
+      </div>
+
+      <!-- Top Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">O'rtacha ko'rsatkich</div>
+          <div class="text-3xl font-extrabold text-emerald-600" id="stat-avg">82%</div>
+          <p class="text-[11px] text-slate-400 mt-1">Barcha guruhlar bo'yicha</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Topshirilgan testlar</div>
+          <div class="text-3xl font-extrabold text-indigo-600" id="stat-total-subs">18</div>
+          <p class="text-[11px] text-slate-400 mt-1">Jami urinishlar soni</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">A'lochi o'quvchilar</div>
+          <div class="text-3xl font-extrabold text-purple-600" id="stat-top-count">4 ta</div>
+          <p class="text-[11px] text-slate-400 mt-1">Natijasi 85% dan yuqori</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
+          <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Eng faol sinf</div>
+          <div class="text-3xl font-extrabold text-amber-600">8-A sinf</div>
+          <p class="text-[11px] text-slate-400 mt-1">94% qatnashish</p>
+        </div>
+      </div>
+
+      <!-- Score Distribution Bar -->
+      <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm mb-8">
+        <h3 class="text-base font-bold text-slate-800 mb-4">O'zlashtirish darajalari taqsimoti</h3>
+        
+        <div class="space-y-4">
+          <div>
+            <div class="flex justify-between text-xs font-semibold mb-1">
+              <span class="text-emerald-700">A'lo (85% - 100%)</span>
+              <span id="dist-high">65%</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="bar-high" class="bg-emerald-500 h-full w-[65%] rounded-full"></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs font-semibold mb-1">
+              <span class="text-blue-700">Yaxshi (70% - 84%)</span>
+              <span id="dist-mid">25%</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="bar-mid" class="bg-blue-500 h-full w-[25%] rounded-full"></div>
+            </div>
+          </div>
+
+          <div>
+            <div class="flex justify-between text-xs font-semibold mb-1">
+              <span class="text-amber-700">Qoniqarli (50% - 69%)</span>
+              <span id="dist-low">10%</span>
+            </div>
+            <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
+              <div id="bar-low" class="bg-amber-500 h-full w-[10%] rounded-full"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Detailed Submissions Table -->
+      <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="p-6 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-base font-bold text-slate-800">Barcha test urinishlari ro'yxati</h3>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 border-b border-slate-100 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+              <tr>
+                <th class="py-4 px-6">O'quvchi</th>
+                <th class="py-4 px-4">Sinf</th>
+                <th class="py-4 px-4">Mavzu</th>
+                <th class="py-4 px-4">Ball</th>
+                <th class="py-4 px-4">Foiz</th>
+                <th class="py-4 px-6 text-right">Daraja</th>
+              </tr>
+            </thead>
+            <tbody id="detailed-submissions-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="6" class="py-8 text-center text-slate-400">Yuklanmoqda...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/teacher-nav.js"></script>
+  <script>
+    const currentUser = Auth.requireAuth("teacher");
+    renderTeacherSidebar("Statistika");
+
+    async function loadStats() {
+      try {
+        const [sumRes, subRes] = await Promise.all([
+          fetch("/api/stats/summary"),
+          fetch("/api/submissions")
+        ]);
+
+        const summary = await sumRes.json();
+        const subs = await subRes.json();
+
+        document.getElementById("stat-avg").textContent = `${summary.averageScore || 0}%`;
+        document.getElementById("stat-total-subs").textContent = summary.totalSubmissions || 0;
+        document.getElementById("stat-top-count").textContent = `${summary.topStudentsCount || 0} ta`;
+
+        const tbody = document.getElementById("detailed-submissions-tbody");
+        if (!subs || subs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">Hozircha test urinishlari yo'q</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = subs.map(s => {
+          let badgeClass = "bg-emerald-50 text-emerald-700";
+          let badgeText = "A'lo";
+
+          if (s.percentage < 50) {
+            badgeClass = "bg-red-50 text-red-700";
+            badgeText = "Qoniqarsiz";
+          } else if (s.percentage < 70) {
+            badgeClass = "bg-amber-50 text-amber-700";
+            badgeText = "O'rtacha";
+          } else if (s.percentage < 85) {
+            badgeClass = "bg-blue-50 text-blue-700";
+            badgeText = "Yaxshi";
+          }
+
+          return `
+            <tr class="hover:bg-slate-50/80 transition">
+              <td class="py-3.5 px-6 font-bold text-slate-800">${s.studentName || 'O\'quvchi'}</td>
+              <td class="py-3.5 px-4 text-slate-500">${s.classGrade || '8-sinf'}</td>
+              <td class="py-3.5 px-4 text-slate-700 font-medium">${s.testTopic || 'Biologiya'}</td>
+              <td class="py-3.5 px-4 font-semibold text-slate-600">${s.score} / ${s.totalQuestions}</td>
+              <td class="py-3.5 px-4 font-bold text-slate-800">${s.percentage}%</td>
+              <td class="py-3.5 px-6 text-right">
+                <span class="px-2.5 py-1 rounded-full text-[10px] font-bold ${badgeClass}">
+                  ${badgeText}
+                </span>
+              </td>
+            </tr>
+          `;
+        }).join("");
+
+      } catch (err) {
+        console.error("Stats load error:", err);
+      }
+    }
+
+    loadStats();
+  </script>
+</body>
+</html>

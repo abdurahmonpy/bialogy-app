@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>O'quvchi Qo'shish | O'qituvchi Portali</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Teacher Sidebar Container -->
+    <div id="teacher-sidebar"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 lg:p-8 overflow-y-auto">
+      
+      <!-- Page Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold mb-1">
+            <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+            Ro'yxatga olish
+          </div>
+          <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Yangi O'quvchi Qo'shish</h1>
+          <p class="text-xs text-slate-500">O'quvchi uchun shaxsiy kabinet oching va uni tegishli sinf guruhiga biriktiring</p>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Add Student Form -->
+        <div class="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 lg:p-8">
+          
+          <!-- Success Notification -->
+          <div id="success-alert" class="hidden mb-6 p-4 bg-emerald-50 border border-emerald-200 rounded-2xl flex items-center gap-3 text-emerald-800 text-xs">
+            <i data-lucide="check-circle" class="w-5 h-5 flex-shrink-0 text-emerald-600"></i>
+            <div>
+              <span class="font-bold block">O'quvchi muvaffaqiyatli qo'shildi!</span>
+              U endi o'z login va paroli orqali tizimga kira oladi.
+            </div>
+          </div>
+
+          <!-- Error Alert -->
+          <div id="error-alert" class="hidden mb-6 p-4 bg-red-50 border border-red-200 rounded-2xl flex items-center gap-3 text-red-800 text-xs">
+            <i data-lucide="alert-circle" class="w-5 h-5 flex-shrink-0 text-red-600"></i>
+            <span id="error-message-text">Xatolik yuz berdi</span>
+          </div>
+
+          <form id="add-student-form" class="space-y-4">
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">F.I.SH (O'quvchining to'liq ismi)</label>
+              <input type="text" id="student-name" required placeholder="Masalan: Sardor Komilov"
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Login (Tizimga kirish nomi)</label>
+                <input type="text" id="student-login" required placeholder="Masalan: sardor2010"
+                  class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Parol</label>
+                <input type="text" id="student-password" required value="123" placeholder="Parol"
+                  class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+              </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Sinf yoki Guruh</label>
+                <select id="student-group" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                  <option value="8-A sinf">8-A sinf</option>
+                  <option value="9-B sinf">9-B sinf</option>
+                  <option value="Abituriyent">Abituriyentlar guruhi</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Telefon raqam</label>
+                <input type="tel" id="student-phone" placeholder="+998 90 123 45 67"
+                  class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+              </div>
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Maktab / Muassasa</label>
+              <input type="text" id="student-school" value="14-sonli umumiy o'rta ta'lim maktabi"
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+            </div>
+
+            <div class="pt-2">
+              <button type="submit" id="submit-btn" class="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2">
+                <i data-lucide="user-plus" class="w-4 h-4"></i>
+                <span>O'quvchini ro'yxatga qo'shish</span>
+              </button>
+            </div>
+          </form>
+
+        </div>
+
+        <!-- Info Card -->
+        <div class="space-y-6">
+          <div class="bg-gradient-to-br from-indigo-900 to-slate-900 text-white p-6 rounded-3xl shadow-lg">
+            <h3 class="text-sm font-bold mb-2 flex items-center gap-2">
+              <i data-lucide="info" class="w-4 h-4 text-indigo-400"></i>
+              Muhim ko'rsatma
+            </h3>
+            <p class="text-xs text-indigo-200 leading-relaxed mb-4">
+              O'quvchini qo'shganingizdan so'ng, unga belgilangan <strong>Login</strong> va <strong>Parol</strong>ni taqdim eting.
+            </p>
+            <p class="text-xs text-indigo-200 leading-relaxed">
+              O'quvchi <code class="bg-white/10 px-2 py-0.5 rounded text-white font-mono">/login.html</code> manzilidan o'z sahifasiga kirib darslar va testlarni boshlashi mumkin.
+            </p>
+          </div>
+
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Mavjud guruhlar sig'imi:</h3>
+            <div class="space-y-2 text-xs">
+              <div class="flex justify-between p-2.5 bg-slate-50 rounded-xl">
+                <span class="font-semibold text-slate-700">8-A sinf</span>
+                <span class="text-indigo-600 font-bold">24 o'quvchi</span>
+              </div>
+              <div class="flex justify-between p-2.5 bg-slate-50 rounded-xl">
+                <span class="font-semibold text-slate-700">9-B sinf</span>
+                <span class="text-indigo-600 font-bold">18 o'quvchi</span>
+              </div>
+              <div class="flex justify-between p-2.5 bg-slate-50 rounded-xl">
+                <span class="font-semibold text-slate-700">Abituriyentlar guruhi</span>
+                <span class="text-indigo-600 font-bold">12 o'quvchi</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/teacher-nav.js"></script>
+  <script>
+    const currentUser = Auth.requireAuth("teacher");
+    renderTeacherSidebar("O'quvchi qo'shish");
+
+    const form = document.getElementById("add-student-form");
+    const successAlert = document.getElementById("success-alert");
+    const errorAlert = document.getElementById("error-alert");
+    const errorMsg = document.getElementById("error-message-text");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      successAlert.classList.add("hidden");
+      errorAlert.classList.add("hidden");
+
+      const payload = {
+        fullName: document.getElementById("student-name").value.trim(),
+        login: document.getElementById("student-login").value.trim(),
+        password: document.getElementById("student-password").value.trim(),
+        classGrade: document.getElementById("student-group").value,
+        phone: document.getElementById("student-phone").value.trim(),
+        school: document.getElementById("student-school").value.trim()
+      };
+
+      try {
+        const res = await fetch("/api/students", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Qo'shishda xatolik");
+
+        successAlert.classList.remove("hidden");
+        form.reset();
+        document.getElementById("student-password").value = "123";
+        document.getElementById("student-school").value = "14-sonli umumiy o'rta ta'lim maktabi";
+      } catch (err) {
+        errorAlert.classList.remove("hidden");
+        errorMsg.textContent = err.message || "Xatolik yuz berdi";
+      }
+    });
+  </script>
+</body>
+</html>

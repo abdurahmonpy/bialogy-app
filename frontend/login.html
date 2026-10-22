@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Kirish | BioEdu Platformasi</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-gradient-to-br from-slate-50 via-slate-100 to-emerald-50 min-h-screen flex items-center justify-center p-4">
+
+  <div class="w-full max-w-md">
+    <!-- Platform Branding -->
+    <div class="text-center mb-8">
+      <div class="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white shadow-xl shadow-emerald-500/25 mb-3">
+        <i data-lucide="dna" class="w-8 h-8"></i>
+      </div>
+      <h1 class="text-2xl font-extrabold text-slate-800">BioEdu Platformasi</h1>
+      <p class="text-slate-500 text-sm mt-1">Biologiya va Tabiiy fanlar bo'yicha ta'lim tizimi</p>
+    </div>
+
+    <!-- Login Card -->
+    <div class="bg-white/90 backdrop-blur-xl rounded-3xl p-8 border border-white/60 shadow-xl shadow-slate-200/50">
+      
+      <!-- Role Toggle -->
+      <div class="flex p-1 bg-slate-100 rounded-2xl mb-6">
+        <button id="role-student-btn" type="button" class="flex-1 py-2.5 rounded-xl font-bold text-sm text-emerald-700 bg-white shadow-sm transition-all flex items-center justify-center gap-2">
+          <i data-lucide="graduation-cap" class="w-4 h-4"></i>
+          O'quvchi
+        </button>
+        <button id="role-teacher-btn" type="button" class="flex-1 py-2.5 rounded-xl font-semibold text-sm text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center gap-2">
+          <i data-lucide="award" class="w-4 h-4"></i>
+          O'qituvchi
+        </button>
+      </div>
+
+      <div id="login-title" class="mb-5">
+        <h2 class="text-lg font-bold text-slate-800">O'quvchi sifatida kirish</h2>
+        <p class="text-xs text-slate-500">Tizimga kirish uchun login va parolingizni kiriting</p>
+      </div>
+
+      <!-- Error Alert -->
+      <div id="error-box" class="hidden mb-4 p-3.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-xl flex items-center gap-2">
+        <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+        <span id="error-message">Login yoki parol noto'g'ri</span>
+      </div>
+
+      <!-- Login Form -->
+      <form id="login-form" class="space-y-4">
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Login / Foydalanuvchi nomi</label>
+          <div class="relative">
+            <i data-lucide="user" class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="text" id="username" required placeholder="Loginingizni kiriting"
+              class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Parol</label>
+          <div class="relative">
+            <i data-lucide="lock" class="w-5 h-5 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input type="password" id="password" required placeholder="Parolingizni kiriting"
+              class="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition">
+          </div>
+        </div>
+
+        <button type="submit" id="submit-btn" class="w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2">
+          <span>Tizimga kirish</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </button>
+      </form>
+
+      <!-- Registration link -->
+      <div class="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
+        Hisobingiz yo'qmi? 
+        <a href="/register.html" class="font-bold text-emerald-600 hover:text-emerald-700 hover:underline">Ro'yxatdan o'tish</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    lucide.createIcons();
+
+    let selectedRole = "student";
+
+    const roleStudentBtn = document.getElementById("role-student-btn");
+    const roleTeacherBtn = document.getElementById("role-teacher-btn");
+    const loginTitle = document.getElementById("login-title");
+    const submitBtn = document.getElementById("submit-btn");
+    const usernameInput = document.getElementById("username");
+    const passwordInput = document.getElementById("password");
+    const errorBox = document.getElementById("error-box");
+    const errorMessage = document.getElementById("error-message");
+
+    // Check if user is already logged in
+    const existingUser = Auth.getCurrentUser();
+    if (existingUser) {
+      if (existingUser.role === "teacher") {
+        window.location.replace("/teacher/");
+      } else {
+        window.location.replace("/student/");
+      }
+    }
+
+    function setRole(role) {
+      selectedRole = role;
+      if (role === "student") {
+        roleStudentBtn.className = "flex-1 py-2.5 rounded-xl font-bold text-sm text-emerald-700 bg-white shadow-sm transition-all flex items-center justify-center gap-2";
+        roleTeacherBtn.className = "flex-1 py-2.5 rounded-xl font-semibold text-sm text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center gap-2";
+        loginTitle.innerHTML = `
+          <h2 class="text-lg font-bold text-slate-800">O'quvchi sifatida kirish</h2>
+          <p class="text-xs text-slate-500">Tizimga kirish uchun login va parolingizni kiriting</p>
+        `;
+        submitBtn.className = "w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2";
+      } else {
+        roleTeacherBtn.className = "flex-1 py-2.5 rounded-xl font-bold text-sm text-indigo-700 bg-white shadow-sm transition-all flex items-center justify-center gap-2";
+        roleStudentBtn.className = "flex-1 py-2.5 rounded-xl font-semibold text-sm text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center gap-2";
+        loginTitle.innerHTML = `
+          <h2 class="text-lg font-bold text-slate-800">O'qituvchi sifatida kirish</h2>
+          <p class="text-xs text-slate-500">O'qituvchi boshqaruv paneliga kirish</p>
+        `;
+        submitBtn.className = "w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/25 transition-all text-sm flex items-center justify-center gap-2";
+      }
+      lucide.createIcons();
+    }
+
+    roleStudentBtn.addEventListener("click", () => setRole("student"));
+    roleTeacherBtn.addEventListener("click", () => setRole("teacher"));
+
+    // Form submission
+    document.getElementById("login-form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errorBox.classList.add("hidden");
+      submitBtn.disabled = true;
+      submitBtn.classList.add("opacity-70");
+
+      try {
+        const user = await Auth.login(usernameInput.value, passwordInput.value);
+        if (user.role === "teacher") {
+          window.location.replace("/teacher/");
+        } else {
+          window.location.replace("/student/");
+        }
+      } catch (err) {
+        errorBox.classList.remove("hidden");
+        errorMessage.textContent = err.message || "Login yoki parol noto'g'ri";
+      } finally {
+        submitBtn.disabled = false;
+        submitBtn.classList.remove("opacity-70");
+      }
+    });
+  </script>
+</body>
+</html>

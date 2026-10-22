@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bosh sahifa | O'quvchi Kabineti</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Student Sidebar Container -->
+    <div id="student-sidebar"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 lg:p-8 overflow-y-auto">
+      
+      <!-- Top Welcome Banner -->
+      <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 p-6 lg:p-8 text-white shadow-lg shadow-emerald-500/15 mb-8">
+        <div class="relative z-10 max-w-2xl">
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-xs font-semibold mb-3">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <span>Interaktiv Biologiya Ta'limi</span>
+          </div>
+          <h1 class="text-2xl lg:text-3xl font-extrabold tracking-tight mb-2">
+            Salom, <span id="student-greeting-name">Jasurbek</span>! 👋
+          </h1>
+          <p class="text-emerald-100 text-sm leading-relaxed">
+            Bugun hujayra biologiyasi va odam anatomiyasi bo'yicha bilimlaringizni sinab ko'ring yoki berilgan uyga vazifalarni topshiring.
+          </p>
+          <div class="mt-5 flex flex-wrap gap-3">
+            <a href="/student/test.html" class="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-emerald-800 font-bold rounded-xl text-xs hover:bg-emerald-50 transition shadow">
+              <i data-lucide="play-circle" class="w-4 h-4"></i>
+              Testni boshlash
+            </a>
+            <a href="/student/homework.html" class="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-700/60 hover:bg-emerald-700/80 text-white font-semibold rounded-xl text-xs transition border border-white/20">
+              <i data-lucide="clipboard-check" class="w-4 h-4"></i>
+              Uyga vazifalarim
+            </a>
+          </div>
+        </div>
+        <!-- Decorative graphic -->
+        <div class="absolute right-[-20px] bottom-[-20px] opacity-15 pointer-events-none hidden sm:block">
+          <i data-lucide="dna" class="w-64 h-64"></i>
+        </div>
+      </div>
+
+      <!-- Quick Stats Row -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="target" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-2xl font-extrabold text-slate-800" id="stat-avg-score">88%</div>
+            <div class="text-xs text-slate-400 font-medium">O'rtacha ball</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="check-circle" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-2xl font-extrabold text-slate-800" id="stat-tests-done">12</div>
+            <div class="text-xs text-slate-400 font-medium">Topshirilgan testlar</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="clock" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-2xl font-extrabold text-slate-800" id="stat-pending-hw">2</div>
+            <div class="text-xs text-slate-400 font-medium">Kutilayotgan vazifa</div>
+          </div>
+        </div>
+
+        <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center gap-4">
+          <div class="w-12 h-12 rounded-xl bg-rose-50 text-rose-600 flex items-center justify-center flex-shrink-0">
+            <i data-lucide="flame" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <div class="text-2xl font-extrabold text-slate-800" id="stat-streak">5 kun</div>
+            <div class="text-xs text-slate-400 font-medium">Uzluksiz faollik</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Two Column Layout: Homework & Tests -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left: Active Homework List -->
+        <div class="lg:col-span-2 space-y-6">
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between mb-5">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 bg-emerald-50 text-emerald-600 rounded-xl">
+                  <i data-lucide="book-open" class="w-5 h-5"></i>
+                </div>
+                <h2 class="text-lg font-bold text-slate-800">So'nggi uyga vazifalar</h2>
+              </div>
+              <a href="/student/homework.html" class="text-xs font-bold text-emerald-600 hover:text-emerald-700 hover:underline">
+                Barchasini ko'rish &rarr;
+              </a>
+            </div>
+
+            <div id="recent-homework-list" class="space-y-3">
+              <div class="text-center py-8 text-slate-400 text-xs">Vazifalar yuklanmoqda...</div>
+            </div>
+          </div>
+
+          <!-- Recommended Tests -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+            <div class="flex items-center justify-between mb-5">
+              <div class="flex items-center gap-2.5">
+                <div class="p-2 bg-cyan-50 text-cyan-600 rounded-xl">
+                  <i data-lucide="file-check-2" class="w-5 h-5"></i>
+                </div>
+                <h2 class="text-lg font-bold text-slate-800">Tavsiya etilgan 3-bosqichli testlar</h2>
+              </div>
+              <a href="/student/test.html" class="text-xs font-bold text-cyan-600 hover:text-cyan-700 hover:underline">
+                Test markazi &rarr;
+              </a>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-emerald-200 hover:shadow-md transition group">
+                <span class="inline-block px-2.5 py-0.5 bg-emerald-100 text-emerald-800 text-[10px] font-bold rounded-full mb-2">8-sinf Biologiya</span>
+                <h3 class="font-bold text-slate-800 text-sm mb-1 group-hover:text-emerald-600 transition">Hujayra tuzilishi va organoidlari</h3>
+                <p class="text-slate-500 text-xs mb-3 line-clamp-2">Oson, O'rtacha va Qiyin darajadagi savollar to'plami.</p>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-200/60">
+                  <span class="text-[11px] text-slate-400 font-medium">9 ta savol</span>
+                  <a href="/student/test.html?topic=Hujayra" class="text-xs font-bold text-emerald-600 group-hover:translate-x-0.5 transition flex items-center gap-1">
+                    Boshlash <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                  </a>
+                </div>
+              </div>
+
+              <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50 hover:bg-white hover:border-teal-200 hover:shadow-md transition group">
+                <span class="inline-block px-2.5 py-0.5 bg-teal-100 text-teal-800 text-[10px] font-bold rounded-full mb-2">9-sinf Sitologiya</span>
+                <h3 class="font-bold text-slate-800 text-sm mb-1 group-hover:text-teal-600 transition">Fotosintez va Hujayra nafas olishi</h3>
+                <p class="text-slate-500 text-xs mb-3 line-clamp-2">Yorug'lik va qorong'ulik fazalari, ATF sintezi.</p>
+                <div class="flex items-center justify-between pt-2 border-t border-slate-200/60">
+                  <span class="text-[11px] text-slate-400 font-medium">10 ta savol</span>
+                  <a href="/student/test.html?topic=Fotosintez" class="text-xs font-bold text-teal-600 group-hover:translate-x-0.5 transition flex items-center gap-1">
+                    Boshlash <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Right: AI Tutor & Class Chat Widget -->
+        <div class="space-y-6">
+          <!-- AI Assistant Card -->
+          <div class="bg-gradient-to-br from-indigo-900 via-indigo-800 to-purple-900 text-white p-6 rounded-3xl shadow-lg relative overflow-hidden">
+            <div class="relative z-10">
+              <div class="w-10 h-10 rounded-xl bg-white/10 backdrop-blur flex items-center justify-center mb-4">
+                <i data-lucide="bot" class="w-6 h-6 text-indigo-200"></i>
+              </div>
+              <h3 class="text-base font-bold mb-1">AI Biologiya Repititori</h3>
+              <p class="text-indigo-200 text-xs leading-relaxed mb-4">
+                Tushunarsiz mavzular yoki biologik atamalarni istalgan vaqtda so'rang. 24/7 yordamchingiz!
+              </p>
+              <a href="/student/chat.html?ai=1" class="w-full inline-flex items-center justify-center gap-2 py-2.5 bg-white text-indigo-900 rounded-xl text-xs font-bold hover:bg-indigo-50 transition shadow">
+                <i data-lucide="message-square" class="w-4 h-4"></i>
+                Repititor bilan suhbatlashish
+              </a>
+            </div>
+          </div>
+
+          <!-- Class Teacher Contact Info -->
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+            <h3 class="text-sm font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <i data-lucide="user-check" class="w-4 h-4 text-emerald-600"></i>
+              Fanningiz o'qituvchisi
+            </h3>
+            <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl mb-4">
+              <div class="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center">
+                A
+              </div>
+              <div>
+                <p class="text-xs font-bold text-slate-800">Aziza Rahimova</p>
+                <p class="text-[11px] text-slate-500">Biologiya fani o'qituvchisi</p>
+              </div>
+            </div>
+            <a href="/student/chat.html" class="w-full inline-flex items-center justify-center gap-2 py-2.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-xl text-xs font-bold transition">
+              <i data-lucide="send" class="w-3.5 h-3.5"></i>
+              Ustozga xabar yozish
+            </a>
+          </div>
+        </div>
+
+      </div>
+
+    </main>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/student-nav.js"></script>
+  <script>
+    // Route protection: Must be logged in as student
+    const currentUser = Auth.requireAuth("student");
+
+    // Render left sidebar
+    renderStudentSidebar("Bosh sahifa");
+
+    if (currentUser) {
+      document.getElementById("student-greeting-name").textContent = currentUser.fullName || "O'quvchi";
+      if (currentUser.streakDays) {
+        document.getElementById("stat-streak").textContent = `${currentUser.streakDays} kun`;
+      }
+    }
+
+    // Load recent homework
+    async function loadStudentStats() {
+      try {
+        const [subRes, hwRes] = await Promise.all([
+          fetch("/api/submissions?studentId=" + (currentUser?.id || "user-stud-1")),
+          fetch("/api/homework")
+        ]);
+        const subs = await subRes.json();
+        const hws = await hwRes.json();
+
+        if (subs && subs.length > 0) {
+          const avg = Math.round(subs.reduce((acc, s) => acc + (s.percentage || 0), 0) / subs.length);
+          document.getElementById("stat-avg-score").textContent = `${avg}%`;
+          document.getElementById("stat-tests-done").textContent = subs.length;
+        }
+
+        if (hws && hws.length > 0) {
+          const pending = hws.filter(h => !(h.submissions && h.submissions.some(s => s.studentId === currentUser?.id)));
+          document.getElementById("stat-pending-hw").textContent = pending.length;
+        }
+      } catch (e) {
+        console.error("Stats load error:", e);
+      }
+    }
+
+    loadStudentStats();
+    loadRecentHomework();
+      const container = document.getElementById("recent-homework-list");
+      try {
+        const res = await fetch("/api/homework");
+        const list = await res.json();
+        
+        if (!list || list.length === 0) {
+          container.innerHTML = `<p class="text-slate-400 text-xs py-4 text-center">Hozircha faol uyga vazifalar yo'q.</p>`;
+          return;
+        }
+
+        const pendingList = list.slice(0, 3);
+        container.innerHTML = pendingList.map(hw => {
+          const isSubmitted = hw.submissions && hw.submissions.some(s => s.studentId === currentUser?.id);
+          const badgeClass = isSubmitted 
+            ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+            : "bg-amber-50 text-amber-700 border-amber-200";
+          const badgeText = isSubmitted ? "Topshirildi" : "Kutilmoqda";
+
+          return `
+            <div class="p-3.5 rounded-2xl border border-slate-100 hover:border-slate-200 bg-slate-50/50 flex items-center justify-between transition">
+              <div>
+                <h4 class="text-xs font-bold text-slate-800 mb-0.5">${hw.title}</h4>
+                <p class="text-[11px] text-slate-500">Muddati: ${hw.deadline || "Muddatsiz"} &bull; ${hw.groupName || "8-A sinf"}</p>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-2.5 py-1 text-[10px] font-bold rounded-lg border ${badgeClass}">
+                  ${badgeText}
+                </span>
+                <a href="/student/homework.html?id=${hw.id}" class="p-2 text-slate-400 hover:text-emerald-600 rounded-lg transition">
+                  <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                </a>
+              </div>
+            </div>
+          `;
+        }).join("");
+
+        lucide.createIcons();
+      } catch (err) {
+        container.innerHTML = `<p class="text-red-400 text-xs py-3">Yuklashda xatolik yuz berdi</p>`;
+      }
+    }
+
+    loadRecentHomework();
+  </script>
+</body>
+</html>

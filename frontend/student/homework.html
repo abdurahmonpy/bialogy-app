@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Uyga vazifa | O'quvchi Kabineti</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Student Sidebar Container -->
+    <div id="student-sidebar"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 lg:p-8 overflow-y-auto">
+      
+      <!-- Page Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold mb-1">
+            <i data-lucide="book-open" class="w-3.5 h-3.5"></i>
+            Topshiriqlar
+          </div>
+          <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Uyga vazifalar</h1>
+          <p class="text-xs text-slate-500">O'qituvchi tomonidan berilgan amaliy va nazariy topshiriqlarni bajaring</p>
+        </div>
+      </div>
+
+      <!-- Homework List Grid -->
+      <div id="homework-grid" class="space-y-4">
+        <div class="text-center py-12 text-slate-400 text-xs">Vazifalar yuklanmoqda...</div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Homework Submission Modal -->
+  <div id="submission-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <div>
+          <h3 id="modal-hw-title" class="font-bold text-slate-800 text-base">Vazifani topshirish</h3>
+          <p id="modal-hw-subject" class="text-xs text-slate-400">Biologiya fani</p>
+        </div>
+        <button id="close-modal-btn" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="submission-form" class="space-y-4">
+        <input type="hidden" id="modal-hw-id">
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Javobingiz yoki tushuntirishingiz</label>
+          <textarea id="modal-answer-text" rows="5" required placeholder="Topshiriq yechimi, savollarga yozgan javoblaringizni batafsil bayon qiling..."
+            class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"></textarea>
+        </div>
+
+        <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
+          <i data-lucide="info" class="w-4 h-4 flex-shrink-0"></i>
+          Topshirilgandan so'ng ustozingiz tomonidan tekshirilib baho qo'yiladi.
+        </div>
+
+        <button type="submit" id="submit-hw-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-md shadow-emerald-500/20 text-xs transition flex items-center justify-center gap-2">
+          <span>Topshirish</span>
+          <i data-lucide="send" class="w-3.5 h-3.5"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/student-nav.js"></script>
+  <script>
+    const currentUser = Auth.requireAuth("student");
+    renderStudentSidebar("Uyga vazifa");
+
+    const homeworkGrid = document.getElementById("homework-grid");
+    const submissionModal = document.getElementById("submission-modal");
+    const closeModalBtn = document.getElementById("close-modal-btn");
+    const submissionForm = document.getElementById("submission-form");
+    const modalHwId = document.getElementById("modal-hw-id");
+    const modalHwTitle = document.getElementById("modal-hw-title");
+    const modalHwSubject = document.getElementById("modal-hw-subject");
+    const modalAnswerText = document.getElementById("modal-answer-text");
+
+    closeModalBtn.addEventListener("click", () => submissionModal.classList.add("hidden"));
+
+    async function loadHomework() {
+      try {
+        const res = await fetch("/api/homework");
+        const list = await res.json();
+
+        if (!list || list.length === 0) {
+          homeworkGrid.innerHTML = `
+            <div class="text-center py-16 bg-white rounded-3xl border border-slate-200/80 p-8">
+              <i data-lucide="clipboard-check" class="w-12 h-12 text-slate-300 mx-auto mb-3"></i>
+              <h3 class="font-bold text-slate-700 text-sm">Hozircha vazifalar yo'q</h3>
+              <p class="text-slate-400 text-xs mt-1">O'qituvchi yangi topshiriq yuklaganda bu yerda ko'rinadi.</p>
+            </div>
+          `;
+          lucide.createIcons();
+          return;
+        }
+
+        homeworkGrid.innerHTML = list.map(hw => {
+          const submission = hw.submissions ? hw.submissions.find(s => s.studentId === currentUser?.id) : null;
+          
+          let statusBadge = "";
+          let actionBtn = "";
+
+          if (submission) {
+            if (submission.grade) {
+              statusBadge = `
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
+                  <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                  Baholandi: ${submission.grade}
+                </span>
+              `;
+            } else {
+              statusBadge = `
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 text-xs font-bold rounded-full">
+                  <i data-lucide="clock" class="w-3.5 h-3.5"></i>
+                  Tekshiruvda
+                </span>
+              `;
+            }
+          } else {
+            statusBadge = `
+              <span class="inline-flex items-center gap-1.5 px-3 py-1 bg-amber-100 text-amber-800 text-xs font-bold rounded-full">
+                <i data-lucide="alert-circle" class="w-3.5 h-3.5"></i>
+                Kutilmoqda
+              </span>
+            `;
+            actionBtn = `
+              <button onclick="openSubmission('${hw.id}', '${encodeURIComponent(hw.title)}')" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+                <i data-lucide="upload" class="w-3.5 h-3.5"></i>
+                Topshirish
+              </button>
+            `;
+          }
+
+          return `
+            <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm transition hover:shadow-md">
+              <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
+                <div>
+                  <div class="flex items-center gap-2 mb-1.5">
+                    <span class="px-2.5 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md">${hw.groupName || '8-A sinf'}</span>
+                    <span class="text-xs text-slate-400">&bull; Muddati: ${hw.deadline || 'Cheklovlarsiz'}</span>
+                  </div>
+                  <h3 class="text-base font-bold text-slate-800">${hw.title}</h3>
+                </div>
+                <div class="flex items-center gap-3">
+                  ${statusBadge}
+                  ${actionBtn}
+                </div>
+              </div>
+
+              <div class="text-xs text-slate-600 leading-relaxed mb-4 bg-slate-50 p-4 rounded-2xl">
+                ${hw.description || 'Topshiriq tafsilotlari mavjud emas'}
+              </div>
+
+              ${submission ? `
+                <div class="mt-4 pt-4 border-t border-slate-100 space-y-2">
+                  <div class="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 text-xs">
+                    <span class="font-bold text-emerald-900 block mb-0.5">Siz yuborgan javob:</span>
+                    <p class="text-emerald-800 whitespace-pre-line">${submission.text}</p>
+                  </div>
+                  ${submission.feedback ? `
+                    <div class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs">
+                      <span class="font-bold text-indigo-900 block mb-0.5">Ustoz taqrizi:</span>
+                      <p class="text-indigo-800">${submission.feedback}</p>
+                    </div>
+                  ` : ''}
+                </div>
+              ` : ''}
+            </div>
+          `;
+        }).join("");
+
+        lucide.createIcons();
+      } catch (err) {
+        homeworkGrid.innerHTML = `<div class="text-center py-12 text-red-500 text-xs">Vazifalarni yuklashda xatolik yuz berdi.</div>`;
+      }
+    }
+
+    window.openSubmission = function(hwId, encodedTitle) {
+      modalHwId.value = hwId;
+      modalHwTitle.textContent = decodeURIComponent(encodedTitle);
+      modalAnswerText.value = "";
+      submissionModal.classList.remove("hidden");
+    };
+
+    submissionForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const hwId = modalHwId.value;
+      const text = modalAnswerText.value.trim();
+      if (!text) return;
+
+      try {
+        const res = await fetch(`/api/homework/${hwId}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            studentId: currentUser.id,
+            studentName: currentUser.fullName,
+            text: text
+          })
+        });
+
+        if (!res.ok) throw new Error("Topshirishda xatolik");
+
+        submissionModal.classList.add("hidden");
+        loadHomework();
+      } catch (err) {
+        alert("Xatolik: " + err.message);
+      }
+    });
+
+    loadHomework();
+  </script>
+</body>
+</html>

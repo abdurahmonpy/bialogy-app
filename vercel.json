@@ -1,0 +1,27 @@
+{
+  "version": 2,
+  "rewrites": [
+    { "source": "/", "destination": "/frontend/index.html" },
+    { "source": "/login", "destination": "/frontend/login.html" },
+    { "source": "/login.html", "destination": "/frontend/login.html" },
+    { "source": "/register", "destination": "/frontend/register.html" },
+    { "source": "/register.html", "destination": "/frontend/register.html" },
+    { "source": "/student", "destination": "/frontend/student/index.html" },
+    { "source": "/student/", "destination": "/frontend/student/index.html" },
+    { "source": "/student/chat", "destination": "/frontend/student/chat.html" },
+    { "source": "/student/homework", "destination": "/frontend/student/homework.html" },
+    { "source": "/student/test", "destination": "/frontend/student/test.html" },
+    { "source": "/teacher", "destination": "/frontend/teacher/index.html" },
+    { "source": "/teacher/", "destination": "/frontend/teacher/index.html" },
+    { "source": "/teacher/chat", "destination": "/frontend/teacher/chat.html" },
+    { "source": "/teacher/groups", "destination": "/frontend/teacher/groups.html" },
+    { "source": "/teacher/homework", "destination": "/frontend/teacher/homework.html" },
+    { "source": "/teacher/students", "destination": "/frontend/teacher/students.html" },
+    { "source": "/teacher/test", "destination": "/frontend/teacher/test.html" },
+    { "source": "/teacher/stats", "destination": "/frontend/teacher/stats.html" },
+    { "source": "/teacher/ai-assistant", "destination": "/frontend/teacher/ai-assistant.html" },
+    { "source": "/teacher/add-student", "destination": "/frontend/teacher/add-student.html" },
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/(.*)", "destination": "/frontend/$1" }
+  ]
+}

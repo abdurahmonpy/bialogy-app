@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioEdu Platformasi</title>
+  <script src="/js/auth.js"></script>
+  <script>
+    // Immediate redirect based on session
+    (function() {
+      const user = window.Auth && window.Auth.getCurrentUser();
+      if (!user) {
+        window.location.replace("/login.html");
+      } else if (user.role === "teacher") {
+        window.location.replace("/teacher/");
+      } else {
+        window.location.replace("/student/");
+      }
+    })();
+  </script>
+</head>
+<body style="background: #f8fafc; font-family: sans-serif; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0;">
+  <p style="color: #64748b; font-size: 14px;">Yo'naltirilmoqda...</p>
+</body>
+</html>
