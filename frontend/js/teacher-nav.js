@@ -15,7 +15,7 @@
   ];
 
   window.renderTeacherSidebar = function(activeKey = "") {
-    const user = (window.Auth && window.Auth.getCurrentUser()) || { fullName: "Aziza Rahimova", subject: "Biologiya", avatar: "A" };
+    const user = (window.Auth && window.Auth.getCurrentUser()) || { fullName: "O'qituvchi", subject: "Biologiya fani", avatar: "O" };
 
     const navLinksHtml = menuItems.map(item => {
       const isActive = activeKey 

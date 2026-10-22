@@ -77,9 +77,7 @@
               <div>
                 <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Sinf yoki Guruh</label>
                 <select id="student-group" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
-                  <option value="8-A sinf">8-A sinf</option>
-                  <option value="9-B sinf">9-B sinf</option>
-                  <option value="Abituriyent">Abituriyentlar guruhi</option>
+                  <option value="Yuklanmoqda...">Yuklanmoqda...</option>
                 </select>
               </div>
 
@@ -92,7 +90,7 @@
 
             <div>
               <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Maktab / Muassasa</label>
-              <input type="text" id="student-school" value="14-sonli umumiy o'rta ta'lim maktabi"
+              <input type="text" id="student-school" placeholder="Masalan: 14-sonli umumiy o'rta ta'lim maktabi"
                 class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
             </div>
 
@@ -122,20 +120,9 @@
           </div>
 
           <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
-            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Mavjud guruhlar sig'imi:</h3>
-            <div class="space-y-2 text-xs">
-              <div class="flex justify-between p-2.5 bg-slate-50 rounded-xl">
-                <span class="font-semibold text-slate-700">8-A sinf</span>
-                <span class="text-indigo-600 font-bold">24 o'quvchi</span>
-              </div>
-              <div class="flex justify-between p-2.5 bg-slate-50 rounded-xl">
-                <span class="font-semibold text-slate-700">9-B sinf</span>
-                <span class="text-indigo-600 font-bold">18 o'quvchi</span>
-              </div>
-              <div class="flex justify-between p-2.5 bg-slate-50 rounded-xl">
-                <span class="font-semibold text-slate-700">Abituriyentlar guruhi</span>
-                <span class="text-indigo-600 font-bold">12 o'quvchi</span>
-              </div>
+            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-3">Mavjud guruhlar:</h3>
+            <div id="groups-summary-list" class="space-y-2 text-xs">
+              <p class="text-slate-400">Yuklanmoqda...</p>
             </div>
           </div>
         </div>
@@ -183,12 +170,38 @@
         successAlert.classList.remove("hidden");
         form.reset();
         document.getElementById("student-password").value = "123";
-        document.getElementById("student-school").value = "14-sonli umumiy o'rta ta'lim maktabi";
+        loadGroupsForSelect();
       } catch (err) {
         errorAlert.classList.remove("hidden");
         errorMsg.textContent = err.message || "Xatolik yuz berdi";
       }
     });
+
+    async function loadGroupsForSelect() {
+      const select = document.getElementById("student-group");
+      const summaryList = document.getElementById("groups-summary-list");
+      try {
+        const res = await fetch("/api/groups");
+        const groups = await res.json();
+        if (groups && groups.length > 0) {
+          select.innerHTML = groups.map(g => `<option value="${g.name}">${g.name}</option>`).join("");
+          summaryList.innerHTML = groups.map(g => `
+            <div class="flex justify-between p-2.5 bg-slate-50 rounded-xl">
+              <span class="font-semibold text-slate-700">${g.name}</span>
+              <span class="text-indigo-600 font-bold">${g.studentCount || 0} o'quvchi</span>
+            </div>
+          `).join("");
+        } else {
+          select.innerHTML = `<option value="Umumiy guruh">Umumiy guruh</option>`;
+          summaryList.innerHTML = `<p class="text-slate-400 text-xs py-2">Hozircha guruhlar yo'q. <a href="/teacher/groups.html" class="text-indigo-600 font-bold hover:underline">Guruh ochish &rarr;</a></p>`;
+        }
+      } catch (e) {
+        select.innerHTML = `<option value="Umumiy guruh">Umumiy guruh</option>`;
+        summaryList.innerHTML = `<p class="text-red-400 text-xs">Guruhlarni yuklab bo'lmadi</p>`;
+      }
+    }
+
+    loadGroupsForSelect();
   </script>
 </body>
 </html>

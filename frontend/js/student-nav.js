@@ -10,7 +10,7 @@
   ];
 
   window.renderStudentSidebar = function(activeKey = "") {
-    const user = (window.Auth && window.Auth.getCurrentUser()) || { fullName: "Jasurbek Aliyev", classGrade: "8-A sinf", avatar: "J" };
+    const user = (window.Auth && window.Auth.getCurrentUser()) || { fullName: "O'quvchi", classGrade: "O'quvchi", avatar: "O" };
 
     const navLinksHtml = menuItems.map(item => {
       const isActive = activeKey 

@@ -45,9 +45,6 @@
         </div>
         <select id="group-filter" class="w-full md:w-56 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
           <option value="all">Barcha sinflar</option>
-          <option value="8-A sinf">8-A sinf</option>
-          <option value="9-B sinf">9-B sinf</option>
-          <option value="Abituriyent">Abituriyentlar</option>
         </select>
       </div>
 
@@ -88,8 +85,15 @@
 
     async function loadStudents() {
       try {
-        const res = await fetch("/api/students");
+        const [res, grpRes] = await Promise.all([
+          fetch("/api/students"),
+          fetch("/api/groups")
+        ]);
         allStudents = await res.json();
+        const groups = await grpRes.json();
+        if (groups && groups.length > 0) {
+          groupFilter.innerHTML = `<option value="all">Barcha sinflar</option>` + groups.map(g => `<option value="${g.name}">${g.name}</option>`).join("");
+        }
         renderFilteredStudents();
       } catch (e) {
         tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-red-500">Xatolik yuz berdi</td></tr>`;

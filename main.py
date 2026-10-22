@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
+from database import clean_demo_records
 from database import (
     init_db, SessionLocal,
     UserModel, GroupModel, HomeworkModel,
@@ -884,6 +885,15 @@ A) 36 ta  |  B) 72 ta  |  C) 432 ta  |  D) 456 ta
 
 # -------------------------------------------------------------
 # STATS SUMMARY API (PostgreSQL)
+@app.get("/api/admin/clean-demo")
+@app.post("/api/admin/clean-demo")
+async def clean_demo_endpoint():
+    db = SessionLocal()
+    try:
+        clean_demo_records(db)
+        return {"success": True, "message": "Demo ma'lumotlar tozalandi"}
+    finally:
+        db.close()
 # -------------------------------------------------------------
 @app.get("/api/stats/summary")
 async def get_stats_summary():

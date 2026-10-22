@@ -223,243 +223,69 @@ def get_db():
     finally:
         db.close()
 
+def clean_demo_records(db: Session):
+    """Purge all dummy/demo students, groups, submissions, homework, and chat."""
+    try:
+        # Delete demo students
+        db.query(UserModel).filter(
+            (UserModel.id.in_(["user-stud-1", "user-stud-2", "user-stud-3"])) |
+            (UserModel.login.in_(["student", "madina", "bekzod"]))
+        ).delete(synchronize_session=False)
+
+        # Delete demo groups
+        db.query(GroupModel).filter(
+            GroupModel.id.in_(["group-8a", "group-9b", "group-abitur"])
+        ).delete(synchronize_session=False)
+
+        # Delete demo homework
+        db.query(HomeworkModel).filter(
+            HomeworkModel.id.in_(["hw-1", "hw-2"])
+        ).delete(synchronize_session=False)
+
+        # Delete demo submissions
+        db.query(SubmissionModel).filter(
+            SubmissionModel.id.in_(["sub-101", "sub-102", "sub-103"])
+        ).delete(synchronize_session=False)
+
+        # Delete demo chat
+        db.query(ChatMessageModel).filter(
+            ChatMessageModel.id.in_(["msg-1", "msg-2", "msg-3"])
+        ).delete(synchronize_session=False)
+
+        db.commit()
+    except Exception as e:
+        db.rollback()
+        print(f"Error cleaning demo records: {e}")
+
 def seed_initial_data():
     db = SessionLocal()
     try:
-        # 1. Seed Users if empty
+        # Purge any old demo data first
+        clean_demo_records(db)
+
+        # 1. Seed Default Teacher only if no users exist
         if db.query(UserModel).count() == 0:
-            initial_users = [
-                UserModel(
-                    id="user-stud-1",
-                    role="student",
-                    login="student",
-                    password="123",
-                    fullName="Jasurbek Aliyev",
-                    classGrade="8-A sinf",
-                    groupId="group-8a",
-                    school="14-sonli umumiy o'rta ta'lim maktabi",
-                    phone="+998 90 123 45 67",
-                    streakDays=5,
-                    avatar="J",
-                    createdAt=int(time.time() * 1000) - 86400000 * 5
-                ),
-                UserModel(
-                    id="user-stud-2",
-                    role="student",
-                    login="madina",
-                    password="123",
-                    fullName="Madina Umarova",
-                    classGrade="8-A sinf",
-                    groupId="group-8a",
-                    school="14-sonli umumiy o'rta ta'lim maktabi",
-                    phone="+998 93 987 65 43",
-                    streakDays=6,
-                    avatar="M",
-                    createdAt=int(time.time() * 1000) - 86400000 * 6
-                ),
-                UserModel(
-                    id="user-stud-3",
-                    role="student",
-                    login="bekzod",
-                    password="123",
-                    fullName="Bekzod Toshmatov",
-                    classGrade="9-B sinf",
-                    groupId="group-9b",
-                    school="14-sonli umumiy o'rta ta'lim maktabi",
-                    phone="+998 97 555 44 33",
-                    streakDays=3,
-                    avatar="B",
-                    createdAt=int(time.time() * 1000) - 86400000 * 3
-                ),
-                UserModel(
-                    id="user-teacher-1",
-                    role="teacher",
-                    login="teacher",
-                    password="123",
-                    fullName="Aziza Rahimova",
-                    classGrade=None,
-                    groupId=None,
-                    subject="Biologiya va Tabiiy fanlar",
-                    school="14-sonli umumiy o'rta ta'lim maktabi",
-                    phone="+998 91 234 56 78",
-                    streakDays=14,
-                    avatar="A",
-                    createdAt=int(time.time() * 1000) - 86400000 * 14
-                )
-            ]
-            db.add_all(initial_users)
+            default_teacher = UserModel(
+                id="user-teacher-1",
+                role="teacher",
+                login="teacher",
+                password="123",
+                fullName="O'qituvchi",
+                classGrade=None,
+                groupId=None,
+                subject="Biologiya va Tabiiy fanlar",
+                school="Umumiy o'rta ta'lim maktabi",
+                phone="+998 90 000 00 00",
+                streakDays=1,
+                avatar="O",
+                createdAt=int(time.time() * 1000)
+            )
+            db.add(default_teacher)
 
-        # 2. Seed Groups if empty
-        if db.query(GroupModel).count() == 0:
-            initial_groups = [
-                GroupModel(
-                    id="group-8a",
-                    name="8-A sinf Biologiya",
-                    grade="8-sinf",
-                    subject="Biologiya",
-                    schedule="Dush-Chor-Juma 09:00",
-                    studentCount=24,
-                    description="Odam anatomiyasi va fiziologiyasi kursi"
-                ),
-                GroupModel(
-                    id="group-9b",
-                    name="9-B sinf Sitologiya",
-                    grade="9-sinf",
-                    subject="Biologiya",
-                    schedule="Sesh-Pay-Shanba 10:30",
-                    studentCount=22,
-                    description="Sitologiya, genetika va evolutsiya asoslari"
-                ),
-                GroupModel(
-                    id="group-abitur",
-                    name="Abituriyent 2026 DTM Guruh",
-                    grade="10-11 sinf",
-                    subject="Biologiya & Kimyo",
-                    schedule="Har kuni 15:00",
-                    studentCount=18,
-                    description="DTM testlariga tayyorgarlik va chuqurlashtirilgan masalalar"
-                )
-            ]
-            db.add_all(initial_groups)
+        # Note: Groups, Students, Homework, Submissions, Chat are NOT seeded!
+        # They will be created authentically by the teacher and students.
 
-        # 3. Seed Homework if empty
-        if db.query(HomeworkModel).count() == 0:
-            initial_hw = [
-                HomeworkModel(
-                    id="hw-1",
-                    title="Hujayra organoidlari: Mitoxondriya va Xloroplast solishtirma jadvali",
-                    subject="Biologiya",
-                    groupId="group-8a",
-                    groupName="8-A sinf Biologiya",
-                    deadline="28.10.2026, 18:00",
-                    description="Darslikdagi ma'lumotlar asosida mitoxondriya va xloroplast organoidlarining o'xshash va farqli tomonlarini 5 ta bandda yozib topshiring.",
-                    teacherName="Aziza Rahimova",
-                    submissions=[
-                        {
-                            "studentId": "user-stud-1",
-                            "studentName": "Jasurbek Aliyev",
-                            "text": "1. Har ikkisi ham 2 qavat membranali. 2. Har ikkisida o'z halqasimon DNK si va 70S ribosomasi bor. 3. Mitoxondriya ATF sintezlaydi, xloroplast fotosintez qiladi. 4. Xloroplast faqat o'simlikda, mitoxondriya esa barcha eukariotlarda uchraydi.",
-                            "content": "1. Har ikkisi ham 2 qavat membranali. 2. Har ikkisida o'z halqasimon DNK si va 70S ribosomasi bor. 3. Mitoxondriya ATF sintezlaydi, xloroplast fotosintez qiladi. 4. Xloroplast faqat o'simlikda, mitoxondriya esa barcha eukariotlarda uchraydi.",
-                            "submittedAt": "21.10.2026, 11:30",
-                            "grade": "5 (A'lo)",
-                            "feedback": "Barakalla, Jasurbek! Solishtirma tahlil juda aniq va xatosiz bajarilgan."
-                        }
-                    ]
-                ),
-                HomeworkModel(
-                    id="hw-2",
-                    title="Yurak qon aylanish doiralari sxemasini tahlil qilish",
-                    subject="Biologiya",
-                    groupId="group-8a",
-                    groupName="8-A sinf Biologiya",
-                    deadline="30.10.2026, 20:00",
-                    description="Katta va kichik qon aylanish doiralarining boshlanish va tugash kameralarini daftarga yozib tushuntiring.",
-                    teacherName="Aziza Rahimova",
-                    submissions=[]
-                )
-            ]
-            db.add_all(initial_hw)
-
-        # 4. Seed Chat Messages if empty
-        if db.query(ChatMessageModel).count() == 0:
-            initial_chat = [
-                ChatMessageModel(
-                    id="msg-1",
-                    channel="teacher",
-                    channelId="teacher",
-                    senderId="user-teacher-1",
-                    senderName="Aziza Rahimova",
-                    senderRole="teacher",
-                    text="Assalomu alaykum, Jasurbek! Dars mavzusi bo'yicha qanday savollaringiz bor?",
-                    time="09:15",
-                    timeStr="09:15"
-                ),
-                ChatMessageModel(
-                    id="msg-2",
-                    channel="teacher",
-                    channelId="teacher",
-                    senderId="user-stud-1",
-                    senderName="Jasurbek Aliyev",
-                    senderRole="student",
-                    text="Assalomu alaykum, ustoz! Uyga vazifani topshirdim, tekshirib bera olasizmi?",
-                    time="11:32",
-                    timeStr="11:32"
-                ),
-                ChatMessageModel(
-                    id="msg-3",
-                    channel="group",
-                    channelId="group",
-                    senderId="user-teacher-1",
-                    senderName="Aziza Rahimova",
-                    senderRole="teacher",
-                    text="Assalomu alaykum, 8-A sinf o'quvchilari! Ertangi darsimiz 'Odam anatomiyasi: Yurak faoliyati' mavzusida bo'ladi.",
-                    time="12:00",
-                    timeStr="12:00"
-                )
-            ]
-            db.add_all(initial_chat)
-
-        # 5. Seed Submissions if empty
-        if db.query(SubmissionModel).count() == 0:
-            initial_subs = [
-                SubmissionModel(
-                    id="sub-101",
-                    studentId="user-stud-1",
-                    studentName="Jasurbek Aliyev",
-                    classGrade="8-A sinf",
-                    studentClass="8-A sinf",
-                    testTopic="Hujayra tuzilishi va organoidlari",
-                    topic="Hujayra tuzilishi va organoidlari",
-                    score=8,
-                    total=9,
-                    totalQuestions=9,
-                    percentage=89,
-                    grade="A'lo (5)",
-                    gradeBadge="A'lo (5)",
-                    date="21.10.2026, 14:15",
-                    dateStr="21.10.2026, 14:15",
-                    answers=[]
-                ),
-                SubmissionModel(
-                    id="sub-102",
-                    studentId="user-stud-2",
-                    studentName="Madina Umarova",
-                    classGrade="8-A sinf",
-                    studentClass="8-A sinf",
-                    testTopic="Hujayra tuzilishi va organoidlari",
-                    topic="Hujayra tuzilishi va organoidlari",
-                    score=9,
-                    total=9,
-                    totalQuestions=9,
-                    percentage=100,
-                    grade="A'lo (5)",
-                    gradeBadge="A'lo (5)",
-                    date="21.10.2026, 14:35",
-                    dateStr="21.10.2026, 14:35",
-                    answers=[]
-                ),
-                SubmissionModel(
-                    id="sub-103",
-                    studentId="user-stud-3",
-                    studentName="Bekzod Toshmatov",
-                    classGrade="9-B sinf",
-                    studentClass="9-B sinf",
-                    testTopic="Fotosintez va Hujayra nafas olishi",
-                    topic="Fotosintez va Hujayra nafas olishi",
-                    score=7,
-                    total=10,
-                    totalQuestions=10,
-                    percentage=70,
-                    grade="Yaxshi (4)",
-                    gradeBadge="Yaxshi (4)",
-                    date="21.10.2026, 15:00",
-                    dateStr="21.10.2026, 15:00",
-                    answers=[]
-                )
-            ]
-            db.add_all(initial_subs)
-
-        # 6. Seed Teacher Tests if empty
+        # 2. Seed Standard Biology Test Bank if empty
         if db.query(TeacherTestModel).count() == 0:
             initial_tests = [
                 TeacherTestModel(

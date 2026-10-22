@@ -35,36 +35,8 @@
           </div>
 
           <div class="p-2 space-y-1.5 overflow-y-auto">
-            <!-- Channel: Jasurbek -->
-            <button onclick="selectTeacherChannel('teacher')" id="ch-teacher" class="w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100">
-              <div class="w-11 h-11 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center flex-shrink-0">
-                J
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between mb-0.5">
-                  <h4 class="text-xs font-bold text-slate-800 truncate">Jasurbek Aliyev</h4>
-                  <span class="text-[10px] text-slate-400">8-A</span>
-                </div>
-                <p class="text-[11px] text-slate-500 truncate">O'quvchi shaxsiy yozishmasi</p>
-              </div>
-            </button>
-
-            <!-- Channel: Class Group -->
-            <button onclick="selectTeacherChannel('group')" id="ch-group" class="w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left">
-              <div class="w-11 h-11 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0">
-                <i data-lucide="users" class="w-5 h-5"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between mb-0.5">
-                  <h4 class="text-xs font-bold text-slate-800 truncate">8-A Biologiya guruhi</h4>
-                  <span class="text-[10px] text-slate-400">Guruh</span>
-                </div>
-                <p class="text-[11px] text-slate-500 truncate">Umumiy sinf e'lonlari</p>
-              </div>
-            </button>
-
             <!-- Channel: AI Assistant -->
-            <button onclick="selectTeacherChannel('ai')" id="ch-ai" class="w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left">
+            <button onclick="selectTeacherChannel('ai')" id="ch-ai" class="w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100">
               <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0">
                 <i data-lucide="sparkles" class="w-5 h-5"></i>
               </div>
@@ -76,6 +48,25 @@
                 <p class="text-[11px] text-slate-500 truncate">Pedagogik savollar va metodika</p>
               </div>
             </button>
+
+            <!-- Channel: Class Group -->
+            <button onclick="selectTeacherChannel('group')" id="ch-group" class="w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left">
+              <div class="w-11 h-11 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0">
+                <i data-lucide="users" class="w-5 h-5"></i>
+              </div>
+              <div class="flex-1 min-w-0">
+                <div class="flex items-center justify-between mb-0.5">
+                  <h4 class="text-xs font-bold text-slate-800 truncate">Biologiya guruhi</h4>
+                  <span class="text-[10px] text-slate-400">Guruh</span>
+                </div>
+                <p class="text-[11px] text-slate-500 truncate">Umumiy sinf e'lonlari</p>
+              </div>
+            </button>
+
+            <div class="pt-2 px-2 pb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">O'quvchilar bilan muloqot</div>
+            <div id="students-chat-list" class="space-y-1">
+              <p class="text-[11px] text-slate-400 px-2 py-1">Yuklanmoqda...</p>
+            </div>
           </div>
         </div>
 
@@ -122,14 +113,19 @@
     const currentUser = Auth.requireAuth("teacher");
     renderTeacherSidebar("Chat");
 
-    let activeChannel = "teacher"; // 'teacher' (with Jasurbek), 'group', 'ai'
+    let activeChannel = "ai"; // 'ai', 'group', 'direct'
+    let activeStudent = null;
+    let studentList = [];
     const container = document.getElementById("teacher-msg-container");
     const input = document.getElementById("teacher-msg-input");
 
     function selectTeacherChannel(ch) {
       activeChannel = ch;
-      ['teacher', 'group', 'ai'].forEach(c => {
+      activeStudent = null;
+      document.querySelectorAll("#students-chat-list button").forEach(b => b.classList.remove("bg-indigo-50", "border", "border-indigo-100"));
+      ['ai', 'group'].forEach(c => {
         const btn = document.getElementById(`ch-${c}`);
+        if (!btn) return;
         if (c === ch) {
           btn.className = "w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100";
         } else {
@@ -141,14 +137,9 @@
       const desc = document.getElementById("header-desc");
       const avatar = document.getElementById("header-avatar");
 
-      if (ch === "teacher") {
-        title.textContent = "Jasurbek Aliyev";
-        desc.textContent = "8-A sinf o'quvchisi • Faol";
-        avatar.className = "w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center";
-        avatar.innerHTML = "J";
-      } else if (ch === "group") {
-        title.textContent = "8-A Biologiya guruhi";
-        desc.textContent = "Barcha 8-A sinf o'quvchilari uchun umumiy chat";
+      if (ch === "group") {
+        title.textContent = "Biologiya guruhi";
+        desc.textContent = "Barcha o'quvchilar uchun umumiy guruh chati";
         avatar.className = "w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center";
         avatar.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i>`;
       } else {
@@ -162,11 +153,81 @@
       loadTeacherMessages();
     }
 
+    function selectStudentChat(studentId) {
+      const student = studentList.find(s => s.id === studentId);
+      if (!student) return;
+
+      activeChannel = "direct";
+      activeStudent = student;
+
+      ['ai', 'group'].forEach(c => {
+        const btn = document.getElementById(`ch-${c}`);
+        if (btn) btn.className = "w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left";
+      });
+
+      document.querySelectorAll("#students-chat-list button").forEach(b => {
+        b.className = "w-full p-2.5 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left group";
+      });
+      const activeBtn = document.getElementById(`stud-btn-${studentId}`);
+      if (activeBtn) {
+        activeBtn.className = "w-full p-2.5 rounded-2xl flex items-center gap-3 bg-indigo-50 border border-indigo-100 text-slate-800 transition text-left group";
+      }
+
+      const title = document.getElementById("header-title");
+      const desc = document.getElementById("header-desc");
+      const avatar = document.getElementById("header-avatar");
+
+      title.textContent = student.fullName;
+      desc.textContent = `${student.classGrade || 'O\'quvchi'} • ${student.school || 'Maktab'}`;
+      avatar.className = "w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center";
+      avatar.innerHTML = student.avatar || student.fullName?.[0] || 'O';
+
+      lucide.createIcons();
+      loadTeacherMessages();
+    }
+
+    async function loadStudentsList() {
+      const listContainer = document.getElementById("students-chat-list");
+      try {
+        const res = await fetch("/api/students");
+        studentList = await res.json();
+        if (!studentList || studentList.length === 0) {
+          listContainer.innerHTML = `<p class="text-[11px] text-slate-400 px-2 py-2 italic">Hozircha o'quvchilar yo'q. <a href="/teacher/add-student.html" class="text-indigo-600 font-bold hover:underline">Qo'shish &rarr;</a></p>`;
+          return;
+        }
+
+        listContainer.innerHTML = studentList.map(s => `
+          <button onclick="selectStudentChat('${s.id}')" id="stud-btn-${s.id}" class="w-full p-2.5 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left group">
+            <div class="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center text-xs flex-shrink-0">
+              ${s.avatar || s.fullName?.[0] || 'O'}
+            </div>
+            <div class="flex-1 min-w-0">
+              <h4 class="text-xs font-bold text-slate-800 truncate">${s.fullName}</h4>
+              <p class="text-[10px] text-slate-400 truncate">${s.classGrade || 'O\'quvchi'}</p>
+            </div>
+          </button>
+        `).join("");
+
+        // Check URL params for studentId
+        const urlParams = new URLSearchParams(window.location.search);
+        const reqStudentId = urlParams.get("studentId");
+        if (reqStudentId) {
+          selectStudentChat(reqStudentId);
+        }
+      } catch (e) {
+        listContainer.innerHTML = `<p class="text-[11px] text-red-400 px-2">Yuklab bo'lmadi</p>`;
+      }
+    }
+
     async function loadTeacherMessages() {
       container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Xabarlar yuklanmoqda...</div>`;
 
       try {
-        const res = await fetch(`/api/chat/messages?channel=${activeChannel}&userId=user-stud-1`);
+        let url = `/api/chat/messages?channel=${activeChannel}`;
+        if (activeStudent) {
+          url += `&userId=${activeStudent.id}`;
+        }
+        const res = await fetch(url);
         const messages = await res.json();
 
         if (!messages || messages.length === 0) {
@@ -223,8 +284,7 @@
           body: JSON.stringify({
             channel: activeChannel,
             senderId: currentUser.id,
-            senderName: currentUser.fullName || "Aziza Rahimova",
-            senderRole: "teacher",
+            senderName: currentUser.fullName || "O'qituvchi",
             text: text
           })
         });
@@ -234,7 +294,8 @@
       }
     });
 
-    selectTeacherChannel("teacher");
+    loadStudentsList();
+    selectTeacherChannel("ai");
   </script>
 </body>
 </html>

@@ -28,7 +28,7 @@
             <span>Pedagogik Boshqaruv Markazi</span>
           </div>
           <h1 class="text-2xl lg:text-3xl font-extrabold tracking-tight mb-2">
-            Xush kelibsiz, <span id="teacher-name-heading">Aziza Rahimova</span>! 👋
+            Xush kelibsiz, <span id="teacher-name-heading">Ustoz</span>! 👋
           </h1>
           <p class="text-indigo-100 text-sm leading-relaxed">
             Biologiya fani bo'yicha guruhlar faolligi, o'quvchilar test ko'rsatkichlari va uyga vazifalar nazorati bir joyda.
@@ -57,7 +57,7 @@
             <i data-lucide="users" class="w-6 h-6"></i>
           </div>
           <div>
-            <div class="text-2xl font-extrabold text-slate-800" id="kpi-students">3</div>
+            <div class="text-2xl font-extrabold text-slate-800" id="kpi-students">0</div>
             <div class="text-xs text-slate-400 font-medium">Jami o'quvchilar</div>
           </div>
         </div>
@@ -67,7 +67,7 @@
             <i data-lucide="layers" class="w-6 h-6"></i>
           </div>
           <div>
-            <div class="text-2xl font-extrabold text-slate-800" id="kpi-groups">3</div>
+            <div class="text-2xl font-extrabold text-slate-800" id="kpi-groups">0</div>
             <div class="text-xs text-slate-400 font-medium">Faol guruhlar</div>
           </div>
         </div>
@@ -77,7 +77,7 @@
             <i data-lucide="target" class="w-6 h-6"></i>
           </div>
           <div>
-            <div class="text-2xl font-extrabold text-slate-800" id="kpi-avg">82%</div>
+            <div class="text-2xl font-extrabold text-slate-800" id="kpi-avg">0%</div>
             <div class="text-xs text-slate-400 font-medium">O'rtacha o'zlashtirish</div>
           </div>
         </div>
@@ -87,7 +87,7 @@
             <i data-lucide="clipboard-list" class="w-6 h-6"></i>
           </div>
           <div>
-            <div class="text-2xl font-extrabold text-slate-800" id="kpi-homework">2</div>
+            <div class="text-2xl font-extrabold text-slate-800" id="kpi-homework">0</div>
             <div class="text-xs text-slate-400 font-medium">Faol vazifalar</div>
           </div>
         </div>
@@ -269,6 +269,8 @@
               </div>
             </div>
           `).join("");
+        } else {
+          grpContainer.innerHTML = `<div class="p-6 rounded-2xl border border-dashed border-slate-200 text-center text-xs text-slate-400 col-span-3">Hozircha guruhlar mavjud emas. <a href="/teacher/groups.html" class="text-indigo-600 font-bold hover:underline">Yangi guruh ochish &rarr;</a></div>`;
         }
 
         lucide.createIcons();

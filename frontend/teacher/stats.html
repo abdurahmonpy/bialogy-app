@@ -36,26 +36,26 @@
       <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">O'rtacha ko'rsatkich</div>
-          <div class="text-3xl font-extrabold text-emerald-600" id="stat-avg">82%</div>
+          <div class="text-3xl font-extrabold text-emerald-600" id="stat-avg">0%</div>
           <p class="text-[11px] text-slate-400 mt-1">Barcha guruhlar bo'yicha</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Topshirilgan testlar</div>
-          <div class="text-3xl font-extrabold text-indigo-600" id="stat-total-subs">18</div>
+          <div class="text-3xl font-extrabold text-indigo-600" id="stat-total-subs">0</div>
           <p class="text-[11px] text-slate-400 mt-1">Jami urinishlar soni</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">A'lochi o'quvchilar</div>
-          <div class="text-3xl font-extrabold text-purple-600" id="stat-top-count">4 ta</div>
+          <div class="text-3xl font-extrabold text-purple-600" id="stat-top-count">0 ta</div>
           <p class="text-[11px] text-slate-400 mt-1">Natijasi 85% dan yuqori</p>
         </div>
 
         <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm">
           <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Eng faol sinf</div>
-          <div class="text-3xl font-extrabold text-amber-600">8-A sinf</div>
-          <p class="text-[11px] text-slate-400 mt-1">94% qatnashish</p>
+          <div class="text-3xl font-extrabold text-amber-600" id="stat-top-group">-</div>
+          <p class="text-[11px] text-slate-400 mt-1" id="stat-top-group-desc">Hozircha ma'lumot yo'q</p>
         </div>
       </div>
 
@@ -67,30 +67,30 @@
           <div>
             <div class="flex justify-between text-xs font-semibold mb-1">
               <span class="text-emerald-700">A'lo (85% - 100%)</span>
-              <span id="dist-high">65%</span>
+              <span id="dist-high">0%</span>
             </div>
             <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-              <div id="bar-high" class="bg-emerald-500 h-full w-[65%] rounded-full"></div>
+              <div id="bar-high" class="bg-emerald-500 h-full w-[0%] rounded-full transition-all duration-500"></div>
             </div>
           </div>
 
           <div>
             <div class="flex justify-between text-xs font-semibold mb-1">
               <span class="text-blue-700">Yaxshi (70% - 84%)</span>
-              <span id="dist-mid">25%</span>
+              <span id="dist-mid">0%</span>
             </div>
             <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-              <div id="bar-mid" class="bg-blue-500 h-full w-[25%] rounded-full"></div>
+              <div id="bar-mid" class="bg-blue-500 h-full w-[0%] rounded-full transition-all duration-500"></div>
             </div>
           </div>
 
           <div>
             <div class="flex justify-between text-xs font-semibold mb-1">
               <span class="text-amber-700">Qoniqarli (50% - 69%)</span>
-              <span id="dist-low">10%</span>
+              <span id="dist-low">0%</span>
             </div>
             <div class="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-              <div id="bar-low" class="bg-amber-500 h-full w-[10%] rounded-full"></div>
+              <div id="bar-low" class="bg-amber-500 h-full w-[0%] rounded-full transition-all duration-500"></div>
             </div>
           </div>
         </div>
@@ -147,6 +147,33 @@
         if (!subs || subs.length === 0) {
           tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">Hozircha test urinishlari yo'q</td></tr>`;
           return;
+        }
+
+        const highCount = subs.filter(s => (s.percentage || 0) >= 85).length;
+        const midCount = subs.filter(s => (s.percentage || 0) >= 70 && (s.percentage || 0) < 85).length;
+        const lowCount = subs.filter(s => (s.percentage || 0) < 70).length;
+        const total = subs.length;
+
+        const highPct = Math.round((highCount / total) * 100);
+        const midPct = Math.round((midCount / total) * 100);
+        const lowPct = Math.round((lowCount / total) * 100);
+
+        document.getElementById("dist-high").textContent = `${highPct}%`;
+        document.getElementById("dist-mid").textContent = `${midPct}%`;
+        document.getElementById("dist-low").textContent = `${lowPct}%`;
+        document.getElementById("bar-high").style.width = `${highPct}%`;
+        document.getElementById("bar-mid").style.width = `${midPct}%`;
+        document.getElementById("bar-low").style.width = `${lowPct}%`;
+
+        const gradeCounts = {};
+        subs.forEach(s => {
+          const g = s.classGrade || "Umumiy";
+          gradeCounts[g] = (gradeCounts[g] || 0) + 1;
+        });
+        const topGrade = Object.keys(gradeCounts).reduce((a, b) => gradeCounts[a] > gradeCounts[b] ? a : b, "");
+        if (topGrade) {
+          document.getElementById("stat-top-group").textContent = topGrade;
+          document.getElementById("stat-top-group-desc").textContent = `${gradeCounts[topGrade]} ta urinish`;
         }
 
         tbody.innerHTML = subs.map(s => {
