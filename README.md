@@ -85,6 +85,32 @@ O'quvchilar va biologiya o'qituvchilari uchun maxsus ishlab chiqilgan to'liq fun
 
 ---
 
+## 🟣 Render.com da Backend va PostgreSQL ni Deploy Qilish
+
+Render.com da loyihani 2 xil usulda ishga tushirish mumkin:
+
+### 1-usul: Avtomatik Blueprint orqali (Tavsiya etiladi)
+1. [Render.com](https://dashboard.render.com) ga kiring.
+2. **New + -> Blueprint** bo'limini tanlang.
+3. GitHub repozitoriyangizni (`abdurahmonpy/bialogy-app`) ulang.
+4. Repozitoriyadagi `render.yaml` fayli orqali Render avtomatik ravishda PostgreSQL va Web Service ni birgalikda yaratib beradi!
+
+### 2-usul: Qo'lda (Manual) sozlash
+1. **PostgreSQL yaratish:**
+   - **New + -> PostgreSQL Database** ni tanlang.
+   - Name: `bialogy-db`, Region: `Frankfurt (EU)`.
+   - Baza yaratilgach, **Internal Database URL** manzilini nusxalab oling.
+2. **Web Service yaratish:**
+   - **New + -> Web Service** ni tanlang va repozitoriyani ulang.
+   - Runtime: `Python 3`
+   - Build Command: `pip install -r requirements.txt`
+   - Start Command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+   - **Environment Variables**:
+     - `DATABASE_URL`: Nusxalab olingan PostgreSQL URL manzilini qo'ying.
+     - `PYTHON_VERSION`: `3.10.12`
+
+---
+
 ## ▲ Vercel da Frontendni Deploy Qilish
 
 1. [Vercel.com](https://vercel.com) ga kiring va **Add New... -> Project** ni bosing.
