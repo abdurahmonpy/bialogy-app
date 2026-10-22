@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Baholash | O'qituvchi Portali</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Teacher Sidebar Container -->
+    <div id="teacher-sidebar"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 lg:p-8 overflow-y-auto">
+      
+      <!-- Page Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-50 text-emerald-700 rounded-full text-xs font-semibold mb-1">
+            <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+            Topshiriqlarni tekshirish
+          </div>
+          <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Uyga vazifalarni baholash</h1>
+          <p class="text-xs text-slate-500">O'quvchilar tomonidan yuklangan vazifalarni tekshiring, baho qo'ying va taqriz yozing</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="/teacher/homework.html" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition shadow-sm">
+            <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i>
+            Vazifa berish
+          </a>
+          <a href="/teacher/homework-stats.html" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition shadow-sm">
+            <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-600"></i>
+            Statistika
+          </a>
+        </div>
+      </div>
+
+      <!-- Filters Bar -->
+      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row items-center gap-3 mb-6">
+        <div class="relative flex-1 w-full">
+          <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+          <input type="text" id="search-student" placeholder="O'quvchi ismi yoki vazifa mavzusi bo'yicha qidirish..."
+            class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+        </div>
+
+        <select id="filter-status" class="w-full md:w-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          <option value="all">Barcha holatlar</option>
+          <option value="pending" selected>Baholash kutilmoqda</option>
+          <option value="graded">Baholanganlar</option>
+        </select>
+
+        <select id="filter-group" class="w-full md:w-48 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          <option value="all">Barcha guruhlar</option>
+        </select>
+      </div>
+
+      <!-- Submissions List -->
+      <div id="submissions-list" class="space-y-4">
+        <div class="text-center py-12 text-slate-400 text-xs">Topshiriqlar yuklanmoqda...</div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Grading Modal -->
+  <div id="grade-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
+        <div class="flex items-center gap-2.5">
+          <div class="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="award" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-slate-800 text-base leading-tight">Vazifani baholash</h3>
+            <p id="grade-modal-student" class="text-[11px] text-slate-400">O'quvchi javobi</p>
+          </div>
+        </div>
+        <button onclick="closeGradeModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <form id="grade-form" class="space-y-4">
+        <input type="hidden" id="grade-hw-id">
+        <input type="hidden" id="grade-student-id">
+
+        <!-- Student Answer Preview in modal -->
+        <div class="bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+          <div class="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-1">O'quvchi javobi:</div>
+          <p id="grade-modal-text" class="text-xs text-slate-700 max-h-36 overflow-y-auto custom-scroll whitespace-pre-line leading-relaxed"></p>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Baho qo'ying <span class="text-red-500">*</span></label>
+          <div class="grid grid-cols-4 gap-2">
+            <label class="flex flex-col items-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-emerald-400 transition text-center">
+              <input type="radio" name="grade_choice" value="5 (A'lo)" checked class="text-emerald-600 mb-1">
+              <span class="text-xs font-extrabold text-emerald-700">5</span>
+              <span class="text-[9px] text-slate-400">A'lo</span>
+            </label>
+            <label class="flex flex-col items-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-blue-400 transition text-center">
+              <input type="radio" name="grade_choice" value="4 (Yaxshi)" class="text-blue-600 mb-1">
+              <span class="text-xs font-extrabold text-blue-700">4</span>
+              <span class="text-[9px] text-slate-400">Yaxshi</span>
+            </label>
+            <label class="flex flex-col items-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-amber-400 transition text-center">
+              <input type="radio" name="grade_choice" value="3 (Qoniqarli)" class="text-amber-600 mb-1">
+              <span class="text-xs font-extrabold text-amber-700">3</span>
+              <span class="text-[9px] text-slate-400">Qoniqarli</span>
+            </label>
+            <label class="flex flex-col items-center p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-red-400 transition text-center">
+              <input type="radio" name="grade_choice" value="2 (Qayta topshirish)" class="text-red-600 mb-1">
+              <span class="text-xs font-extrabold text-red-700">2</span>
+              <span class="text-[9px] text-slate-400">Qayta</span>
+            </label>
+          </div>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Ustoz taqrizi va izohi</label>
+          <textarea id="grade-feedback" rows="3" placeholder="O'quvchiga tavsiyalar, to'g'ri va noto'g'ri joylarini yozing..."
+            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"></textarea>
+        </div>
+
+        <button type="submit" id="save-grade-btn" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-500/20 flex items-center justify-center gap-2">
+          <i data-lucide="check" class="w-4 h-4"></i>
+          <span>Bahoni saqlash va o'quvchiga yuborish</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/teacher-nav.js"></script>
+  <script>
+    const currentUser = Auth.requireAuth("teacher");
+    renderTeacherSidebar("Baholash");
+
+    const container = document.getElementById("submissions-list");
+    const searchInput = document.getElementById("search-student");
+    const statusFilter = document.getElementById("filter-status");
+    const groupFilter = document.getElementById("filter-group");
+    const gradeModal = document.getElementById("grade-modal");
+    const gradeForm = document.getElementById("grade-form");
+
+    let allHomeworkData = [];
+    let allSubmissionsFlat = [];
+
+    // Parse URL param ?hwId=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const targetHwId = urlParams.get("hwId");
+
+    async function loadSubmissions() {
+      try {
+        const [res, grpRes] = await Promise.all([
+          fetch("/api/homework"),
+          fetch("/api/groups")
+        ]);
+        allHomeworkData = await res.json();
+        const groups = await grpRes.json();
+
+        if (groups && groups.length > 0) {
+          groupFilter.innerHTML = `<option value="all">Barcha guruhlar</option>` +
+            groups.map(g => `<option value="${g.name}">${g.name}</option>`).join("");
+        }
+
+        allSubmissionsFlat = [];
+        allHomeworkData.forEach(hw => {
+          (hw.submissions || []).forEach(sub => {
+            allSubmissionsFlat.push({
+              ...sub,
+              hwId: hw.id,
+              hwTitle: hw.title,
+              hwDeadline: hw.deadline,
+              hwGroup: hw.groupName || 'Umumiy'
+            });
+          });
+        });
+
+        renderSubmissions();
+      } catch (e) {
+        container.innerHTML = `<div class="text-center py-12 text-red-500 text-xs">Yuklashda xatolik yuz berdi</div>`;
+      }
+    }
+
+    function renderSubmissions() {
+      const q = searchInput.value.toLowerCase().trim();
+      const status = statusFilter.value;
+      const group = groupFilter.value;
+
+      const filtered = allSubmissionsFlat.filter(s => {
+        const matchQ = (s.studentName || "").toLowerCase().includes(q) || (s.hwTitle || "").toLowerCase().includes(q);
+        const matchHw = !targetHwId || s.hwId === targetHwId;
+        const matchGroup = group === "all" || s.hwGroup === group;
+        let matchStatus = true;
+        if (status === "pending") matchStatus = !s.grade;
+        if (status === "graded") matchStatus = !!s.grade;
+        return matchQ && matchHw && matchGroup && matchStatus;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `
+          <div class="text-center py-12 bg-white rounded-3xl border border-slate-200/80 p-8 text-slate-400">
+            <i data-lucide="inbox" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
+            <p class="font-bold text-slate-600 text-sm">Topshiriqlar topilmadi</p>
+            <p class="text-xs text-slate-400 mt-1">Ushbu parametrlar bo'yicha topshirilgan uyga vazifalar mavjud emas</p>
+          </div>
+        `;
+        lucide.createIcons();
+        return;
+      }
+
+      container.innerHTML = filtered.map(s => {
+        const isGraded = !!s.grade;
+        const gradeBadge = isGraded
+          ? `<span class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-50 text-emerald-700 text-xs font-bold rounded-full border border-emerald-200">
+              <i data-lucide="check" class="w-3.5 h-3.5"></i> Baholandi: ${s.grade}
+             </span>`
+          : `<span class="inline-flex items-center gap-1 px-3 py-1 bg-amber-50 text-amber-700 text-xs font-bold rounded-full border border-amber-200">
+              <i data-lucide="clock" class="w-3.5 h-3.5"></i> Tekshirish kutilmoqda
+             </span>`;
+
+        return `
+          <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-3 border-b border-slate-100">
+              <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                  ${s.studentName?.[0] || 'O'}
+                </div>
+                <div>
+                  <h4 class="text-sm font-bold text-slate-800">${s.studentName || 'O\'quvchi'}</h4>
+                  <p class="text-[11px] text-slate-400">${s.hwGroup} • Topshirdi: ${s.submittedAt || 'Bugun'}</p>
+                </div>
+              </div>
+              <div>${gradeBadge}</div>
+            </div>
+
+            <div class="mb-3">
+              <span class="text-[11px] font-bold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-full mb-1 inline-block">
+                ${s.hwTitle}
+              </span>
+              <div class="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-xs text-slate-700 leading-relaxed whitespace-pre-line mt-2">
+                ${s.text || s.content || "Javob matni kiritilmagan"}
+              </div>
+            </div>
+
+            ${s.feedback ? `
+              <div class="bg-emerald-50/70 border border-emerald-100 p-3 rounded-xl mb-4 text-xs text-emerald-800">
+                <strong>Ustoz taqrizi:</strong> "${s.feedback}"
+              </div>
+            ` : ''}
+
+            <div class="flex justify-end pt-2">
+              <button onclick="openGradeModal('${s.hwId}', '${s.studentId}', '${encodeURIComponent(s.studentName)}', '${encodeURIComponent(s.text || s.content || '')}', '${encodeURIComponent(s.grade || '')}', '${encodeURIComponent(s.feedback || '')}')"
+                class="inline-flex items-center gap-2 px-5 py-2.5 ${isGraded ? 'bg-slate-100 hover:bg-slate-200 text-slate-700' : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-500/20'} rounded-xl text-xs font-bold transition">
+                <i data-lucide="${isGraded ? 'edit-2' : 'award'}" class="w-4 h-4"></i>
+                <span>${isGraded ? 'Bahoni tahrirlash' : 'Baholash va taqriz berish'}</span>
+              </button>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      lucide.createIcons();
+    }
+
+    searchInput.addEventListener("input", renderSubmissions);
+    statusFilter.addEventListener("change", renderSubmissions);
+    groupFilter.addEventListener("change", renderSubmissions);
+
+    window.openGradeModal = function(hwId, studentId, studentName, text, currentGrade, currentFeedback) {
+      document.getElementById("grade-hw-id").value = hwId;
+      document.getElementById("grade-student-id").value = studentId;
+      document.getElementById("grade-modal-student").textContent = decodeURIComponent(studentName) + " javobi";
+      document.getElementById("grade-modal-text").textContent = decodeURIComponent(text);
+      document.getElementById("grade-feedback").value = decodeURIComponent(currentFeedback);
+
+      const decodedGrade = decodeURIComponent(currentGrade);
+      if (decodedGrade) {
+        const rad = document.querySelector(`input[name="grade_choice"][value="${decodedGrade}"]`);
+        if (rad) rad.checked = true;
+      }
+
+      gradeModal.classList.remove("hidden");
+    };
+
+    window.closeGradeModal = function() {
+      gradeModal.classList.add("hidden");
+    };
+
+    gradeForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const hwId = document.getElementById("grade-hw-id").value;
+      const studentId = document.getElementById("grade-student-id").value;
+      const grade = document.querySelector('input[name="grade_choice"]:checked')?.value || "5 (A'lo)";
+      const feedback = document.getElementById("grade-feedback").value.trim();
+
+      const btn = document.getElementById("save-grade-btn");
+      btn.disabled = true;
+      btn.textContent = "Saqlanmoqda...";
+
+      try {
+        const res = await fetch(`/api/homework/${hwId}/grade`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ studentId, grade, feedback })
+        });
+        if (!res.ok) throw new Error("Baholashda xatolik");
+
+        closeGradeModal();
+        loadSubmissions();
+      } catch (err) {
+        alert("Xatolik: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Bahoni saqlash va o'quvchiga yuborish</span>`;
+        lucide.createIcons();
+      }
+    });
+
+    loadSubmissions();
+  </script>
+</body>
+</html>

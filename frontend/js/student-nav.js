@@ -75,6 +75,12 @@
         </div>
       </aside>
 
+      <!-- Desktop Sidebar Reopen Button (shown only on lg+ when sidebar is closed) -->
+      <button id="sidebar-reopen-btn" onclick="window.toggleSidebar()" title="Menyuni ochish"
+        class="hidden fixed left-0 top-5 z-40 bg-white border border-l-0 border-slate-200 shadow-md py-2 px-1.5 rounded-r-xl text-slate-500 hover:text-emerald-600 hover:bg-slate-50 transition cursor-pointer">
+        <i data-lucide="panel-left-open" class="w-5 h-5"></i>
+      </button>
+
       <!-- Mobile Header & Drawer -->
       <div class="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -133,18 +139,34 @@
       });
     }
 
-    if (localStorage.getItem("student_sidebar_closed") === "true") {
-      const desktopSidebar = document.getElementById("desktop-sidebar");
-      if (desktopSidebar) desktopSidebar.classList.add("lg:hidden");
+    const isClosed = localStorage.getItem("student_sidebar_closed") === "true";
+    const desktopSidebar = document.getElementById("desktop-sidebar");
+    const reopenBtn = document.getElementById("sidebar-reopen-btn");
+    if (isClosed && desktopSidebar) {
+      desktopSidebar.classList.add("lg:hidden");
+      if (reopenBtn) {
+        reopenBtn.classList.remove("hidden");
+        reopenBtn.classList.add("lg:flex");
+      }
     }
   };
 
   window.toggleSidebar = function() {
     const desktopSidebar = document.getElementById("desktop-sidebar");
+    const reopenBtn = document.getElementById("sidebar-reopen-btn");
     if (!desktopSidebar) return;
     desktopSidebar.classList.toggle("lg:hidden");
     const isClosed = desktopSidebar.classList.contains("lg:hidden");
     localStorage.setItem("student_sidebar_closed", isClosed ? "true" : "false");
+    if (reopenBtn) {
+      if (isClosed) {
+        reopenBtn.classList.remove("hidden");
+        reopenBtn.classList.add("lg:flex");
+      } else {
+        reopenBtn.classList.remove("lg:flex");
+        reopenBtn.classList.add("hidden");
+      }
+    }
     if (window.lucide) window.lucide.createIcons();
   };
 })();

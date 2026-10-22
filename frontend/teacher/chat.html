@@ -28,9 +28,6 @@
         <div class="w-full lg:w-80 border-b lg:border-b-0 lg:border-r border-slate-200 flex flex-col flex-shrink-0 bg-slate-50/40">
           <div class="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white">
             <div class="flex items-center gap-2">
-              <button onclick="window.toggleSidebar()" class="p-1.5 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition" title="Menyuni ochish/yopish">
-                <i data-lucide="panel-left" class="w-5 h-5"></i>
-              </button>
               <h2 class="text-sm font-bold text-slate-800 flex items-center gap-1.5">
                 <i data-lucide="message-square" class="w-4 h-4 text-indigo-600"></i>
                 Muloqotlar
@@ -40,31 +37,17 @@
           </div>
 
           <div class="p-2 space-y-1.5 overflow-y-auto">
-            <!-- Channel: AI Assistant -->
-            <button onclick="selectTeacherChannel('ai')" id="ch-ai" class="w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100">
-              <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0">
-                <i data-lucide="sparkles" class="w-5 h-5"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between mb-0.5">
-                  <h4 class="text-xs font-bold text-slate-800 truncate">AI Metodik Maslahatchi</h4>
-                  <span class="text-[10px] text-purple-600 font-semibold">Gemini</span>
-                </div>
-                <p class="text-[11px] text-slate-500 truncate">Pedagogik savollar va metodika</p>
-              </div>
-            </button>
-
             <!-- Channel: Class Group -->
-            <button onclick="selectTeacherChannel('group')" id="ch-group" class="w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left">
-              <div class="w-11 h-11 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0">
+            <button onclick="selectTeacherChannel('group')" id="ch-group" class="w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100">
+              <div class="w-11 h-11 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0 shadow-sm">
                 <i data-lucide="users" class="w-5 h-5"></i>
               </div>
               <div class="flex-1 min-w-0">
                 <div class="flex items-center justify-between mb-0.5">
                   <h4 class="text-xs font-bold text-slate-800 truncate">Biologiya guruhi</h4>
-                  <span class="text-[10px] text-slate-400">Guruh</span>
+                  <span class="text-[10px] text-indigo-600 font-semibold">Umumiy</span>
                 </div>
-                <p class="text-[11px] text-slate-500 truncate">Umumiy sinf e'lonlari</p>
+                <p class="text-[11px] text-slate-500 truncate">Barcha o'quvchilar bilan suhbat</p>
               </div>
             </button>
 
@@ -80,18 +63,14 @@
           
           <div class="p-3.5 border-b border-slate-200 flex items-center justify-between bg-white flex-shrink-0">
             <div class="flex items-center gap-3">
-              <div id="header-avatar" class="w-10 h-10 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
-                <i data-lucide="sparkles" class="w-5 h-5"></i>
+              <div id="header-avatar" class="w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center text-sm shadow-sm">
+                <i data-lucide="users" class="w-5 h-5"></i>
               </div>
               <div>
-                <h3 id="header-title" class="text-sm font-bold text-slate-800">AI Metodik Maslahatchi</h3>
-                <p id="header-desc" class="text-[11px] text-slate-400">Darsliklar va metodika bo'yicha Gemini AI</p>
+                <h3 id="header-title" class="text-sm font-bold text-slate-800">Biologiya guruhi</h3>
+                <p id="header-desc" class="text-[11px] text-slate-400">Barcha o'quvchilar uchun umumiy guruh chati</p>
               </div>
             </div>
-            <button onclick="window.toggleSidebar()" class="hidden lg:flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/80 rounded-xl transition" title="Yon menyuni yopish/ochish">
-              <i data-lucide="panel-left" class="w-4 h-4"></i>
-              <span>Menyu</span>
-            </button>
           </div>
 
           <div id="teacher-msg-container" class="flex-1 p-4 lg:p-6 overflow-y-auto space-y-4 chat-scroll bg-slate-50/50">
@@ -122,41 +101,30 @@
     const currentUser = Auth.requireAuth("teacher");
     renderTeacherSidebar("Chat");
 
-    let activeChannel = "ai"; // 'ai', 'group', 'direct'
+    let activeChannel = "group"; // 'group', 'direct'
     let activeStudent = null;
     let studentList = [];
     const container = document.getElementById("teacher-msg-container");
     const input = document.getElementById("teacher-msg-input");
 
-    function selectTeacherChannel(ch) {
+    function selectTeacherChannel(ch = "group") {
       activeChannel = ch;
       activeStudent = null;
       document.querySelectorAll("#students-chat-list button").forEach(b => b.classList.remove("bg-indigo-50", "border", "border-indigo-100"));
-      ['ai', 'group'].forEach(c => {
-        const btn = document.getElementById(`ch-${c}`);
-        if (!btn) return;
-        if (c === ch) {
-          btn.className = "w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100";
-        } else {
-          btn.className = "w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left";
-        }
-      });
+      
+      const groupBtn = document.getElementById("ch-group");
+      if (groupBtn) {
+        groupBtn.className = "w-full p-3 rounded-2xl flex items-center gap-3 bg-indigo-50 text-slate-800 transition text-left border border-indigo-100";
+      }
 
       const title = document.getElementById("header-title");
       const desc = document.getElementById("header-desc");
       const avatar = document.getElementById("header-avatar");
 
-      if (ch === "group") {
-        title.textContent = "Biologiya guruhi";
-        desc.textContent = "Barcha o'quvchilar uchun umumiy guruh chati";
-        avatar.className = "w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center";
-        avatar.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i>`;
-      } else {
-        title.textContent = "AI Metodik Maslahatchi";
-        desc.textContent = "Darsliklar va metodika bo'yicha Gemini AI";
-        avatar.className = "w-10 h-10 rounded-full bg-purple-600 text-white font-bold flex items-center justify-center";
-        avatar.innerHTML = `<i data-lucide="sparkles" class="w-5 h-5"></i>`;
-      }
+      title.textContent = "Biologiya guruhi";
+      desc.textContent = "Barcha o'quvchilar uchun umumiy guruh chati";
+      avatar.className = "w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center shadow-sm";
+      avatar.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i>`;
 
       lucide.createIcons();
       loadTeacherMessages();
@@ -169,10 +137,10 @@
       activeChannel = "direct";
       activeStudent = student;
 
-      ['ai', 'group'].forEach(c => {
-        const btn = document.getElementById(`ch-${c}`);
-        if (btn) btn.className = "w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left";
-      });
+      const groupBtn = document.getElementById("ch-group");
+      if (groupBtn) {
+        groupBtn.className = "w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left";
+      }
 
       document.querySelectorAll("#students-chat-list button").forEach(b => {
         b.className = "w-full p-2.5 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left group";
@@ -187,7 +155,7 @@
       const avatar = document.getElementById("header-avatar");
 
       title.textContent = student.fullName;
-      desc.textContent = `${student.classGrade || 'O\'quvchi'} • ${student.school || 'Maktab'}`;
+      desc.textContent = `${student.classGrade || 'O\'quvchi'} • ${student.email || student.phone || 'Onlayn'}`;
       avatar.className = "w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center";
       avatar.innerHTML = student.avatar || student.fullName?.[0] || 'O';
 
@@ -304,7 +272,7 @@
     });
 
     loadStudentsList();
-    selectTeacherChannel("ai");
+    selectTeacherChannel("group");
   </script>
 </body>
 </html>

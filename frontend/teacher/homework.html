@@ -3,12 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Uyga vazifalar | O'qituvchi Portali</title>
+  <title>Uyga vazifa berish | O'qituvchi Portali</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -25,197 +27,225 @@
         <div>
           <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold mb-1">
             <i data-lucide="clipboard-list" class="w-3.5 h-3.5"></i>
-            Topshiriqlar Nazorati
+            Uyga vazifalar boshqaruvi
           </div>
-          <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Uyga vazifalar</h1>
-          <p class="text-xs text-slate-500">O'quvchilarga vazifa tayinlash va kelib tushgan javoblarni tekshirib baholash</p>
+          <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Uyga vazifa berish</h1>
+          <p class="text-xs text-slate-500">Biologiya va Kimyo fanlari bo'yicha guruhlarga vazifa tayinlash va e'lon qilish</p>
         </div>
-        <button id="open-hw-modal" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
-          <i data-lucide="plus" class="w-4 h-4"></i>
-          Yangi vazifa berish
-        </button>
+        <div class="flex items-center gap-2">
+          <a href="/teacher/homework-grade.html" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition shadow-sm">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+            Baholash bo'limi
+          </a>
+          <a href="/teacher/homework-stats.html" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition shadow-sm">
+            <i data-lucide="bar-chart-2" class="w-4 h-4 text-indigo-600"></i>
+            Statistika
+          </a>
+        </div>
       </div>
 
-      <!-- Homework List -->
-      <div id="teacher-hw-list" class="space-y-6">
-        <div class="text-center py-12 text-slate-400 text-xs">Yuklanmoqda...</div>
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left Column: Create Homework Form -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm h-fit">
+          <div class="flex items-center gap-2.5 pb-4 border-b border-slate-100 mb-5">
+            <div class="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+              <i data-lucide="plus-circle" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-slate-800 text-sm">Yangi vazifa tayinlash</h3>
+              <p class="text-[11px] text-slate-400">Guruh uchun ko'rsatma va muddat</p>
+            </div>
+          </div>
+
+          <form id="create-hw-form" class="space-y-4">
+            <!-- Title -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Vazifa mavzusi <span class="text-red-500">*</span></label>
+              <input type="text" id="hw-title" required placeholder="Masalan: Fotosintez va xloroplastlar faoliyati"
+                class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+            </div>
+
+            <!-- Subject -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Fan <span class="text-red-500">*</span></label>
+              <div class="grid grid-cols-2 gap-2">
+                <label class="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-emerald-400 transition" id="hw-bio-label">
+                  <input type="radio" name="hw_subject" value="Biologiya" checked class="text-emerald-600 focus:ring-emerald-500" onchange="updateHwSubjectUI()">
+                  <i data-lucide="dna" class="w-4 h-4 text-emerald-600"></i>
+                  <span class="text-xs font-bold text-slate-800">Biologiya</span>
+                </label>
+                <label class="flex items-center gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer hover:border-purple-400 transition" id="hw-chem-label">
+                  <input type="radio" name="hw_subject" value="Kimyo" class="text-purple-600 focus:ring-purple-500" onchange="updateHwSubjectUI()">
+                  <i data-lucide="flask-conical" class="w-4 h-4 text-purple-600"></i>
+                  <span class="text-xs font-bold text-slate-800">Kimyo</span>
+                </label>
+              </div>
+            </div>
+
+            <!-- Group Select & Deadline -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Guruh / Sinf <span class="text-red-500">*</span></label>
+                <select id="hw-group-select" required class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+                  <option value="">Guruhni tanlang...</option>
+                </select>
+              </div>
+
+              <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Topshirish muddati <span class="text-red-500">*</span></label>
+                <input type="date" id="hw-deadline" required
+                  class="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition">
+              </div>
+            </div>
+
+            <!-- Description -->
+            <div>
+              <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Topshiriq matni va savollar <span class="text-red-500">*</span></label>
+              <textarea id="hw-desc" rows="4" required placeholder="O'quvchilar nima qilishi kerakligini batafsil yozing..."
+                class="w-full p-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition"></textarea>
+            </div>
+
+            <button type="submit" id="publish-btn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2">
+              <i data-lucide="send" class="w-4 h-4"></i>
+              <span>Vazifani e'lon qilish</span>
+            </button>
+          </form>
+        </div>
+
+        <!-- Right Column: List of Published Homework -->
+        <div class="lg:col-span-2 space-y-4">
+          <div class="flex items-center justify-between mb-2">
+            <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+              <i data-lucide="layers" class="w-4 h-4 text-indigo-600"></i>
+              E'lon qilingan barcha vazifalar
+            </h3>
+            <span id="total-hw-badge" class="text-xs font-bold text-slate-500 bg-white px-3 py-1 rounded-full border border-slate-200">
+              0 ta vazifa
+            </span>
+          </div>
+
+          <div id="hw-cards-list" class="space-y-4">
+            <div class="text-center py-12 text-slate-400 text-xs">Vazifalar yuklanmoqda...</div>
+          </div>
+        </div>
+
       </div>
 
     </main>
-  </div>
-
-  <!-- Create Homework Modal -->
-  <div id="create-hw-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-        <h3 class="font-bold text-slate-800 text-base">Yangi uyga vazifa yaratish</h3>
-        <button id="close-hw-btn" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <form id="create-hw-form" class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Vazifa mavzusi</label>
-          <input type="text" id="hw-title" required placeholder="Masalan: Fotosintez fazalarini solishtirish jadvali"
-            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Guruh / Sinf</label>
-            <select id="hw-group-select" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-              <option value="Barcha guruhlar">Barcha guruhlar</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Topshirish muddati</label>
-            <input type="date" id="hw-deadline" required
-              class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Topshiriq matni va ko'rsatmalar</label>
-          <textarea id="hw-desc" rows="4" required placeholder="O'quvchilar nima qilishi kerakligini batafsil yozing..."
-            class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"></textarea>
-        </div>
-
-        <button type="submit" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-500/20">
-          Vazifani e'lon qilish
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Grade Submission Modal -->
-  <div id="grade-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-        <h3 class="font-bold text-slate-800 text-base">O'quvchi javobini baholash</h3>
-        <button id="close-grade-btn" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <form id="grade-form" class="space-y-4">
-        <input type="hidden" id="grade-hw-id">
-        <input type="hidden" id="grade-student-id">
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Baho</label>
-          <select id="grade-val" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
-            <option value="5 (A'lo)">5 (A'lo)</option>
-            <option value="4 (Yaxshi)">4 (Yaxshi)</option>
-            <option value="3 (Qoniqarli)">3 (Qoniqarli)</option>
-            <option value="2 (Qayta topshirish)">2 (Qayta topshirish)</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Ustoz taqrizi va izohi</label>
-          <textarea id="grade-feedback" rows="3" placeholder="O'quvchiga yo'l-yo'riq yoki kamchiliklar haqida fikr..."
-            class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition"></textarea>
-        </div>
-
-        <button type="submit" class="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-emerald-500/20">
-          Bahoni saqlash va yuborish
-        </button>
-      </form>
-    </div>
   </div>
 
   <script src="/js/auth.js"></script>
   <script src="/js/teacher-nav.js"></script>
   <script>
     const currentUser = Auth.requireAuth("teacher");
-    renderTeacherSidebar("Uyga vazifa");
+    renderTeacherSidebar("Uyga vazifa berish");
 
-    const hwList = document.getElementById("teacher-hw-list");
-    const createModal = document.getElementById("create-hw-modal");
-    const gradeModal = document.getElementById("grade-modal");
-    const openHwBtn = document.getElementById("open-hw-modal");
-    const closeHwBtn = document.getElementById("close-hw-btn");
-    const closeGradeBtn = document.getElementById("close-grade-btn");
+    const hwForm = document.getElementById("create-hw-form");
+    const groupSelect = document.getElementById("hw-group-select");
+    const cardsContainer = document.getElementById("hw-cards-list");
+    let groupsData = [];
 
-    openHwBtn.addEventListener("click", () => createModal.classList.remove("hidden"));
-    closeHwBtn.addEventListener("click", () => createModal.classList.add("hidden"));
-    closeGradeBtn.addEventListener("click", () => gradeModal.classList.add("hidden"));
+    // Set default deadline to +3 days
+    const defaultDate = new Date();
+    defaultDate.setDate(defaultDate.getDate() + 3);
+    document.getElementById("hw-deadline").value = defaultDate.toISOString().split("T")[0];
 
-    async function loadTeacherHomework() {
+    function updateHwSubjectUI() {
+      const sub = document.querySelector('input[name="hw_subject"]:checked')?.value || "Biologiya";
+      const bio = document.getElementById("hw-bio-label");
+      const chem = document.getElementById("hw-chem-label");
+      if (sub === "Biologiya") {
+        bio.classList.add("border-emerald-500", "bg-emerald-50/50");
+        chem.classList.remove("border-purple-500", "bg-purple-50/50");
+      } else {
+        chem.classList.add("border-purple-500", "bg-purple-50/50");
+        bio.classList.remove("border-emerald-500", "bg-emerald-50/50");
+      }
+    }
+    updateHwSubjectUI();
+
+    async function loadGroups() {
       try {
-        const [res, grpRes] = await Promise.all([
-          fetch("/api/homework"),
-          fetch("/api/groups")
-        ]);
-        const list = await res.json();
-        const groups = await grpRes.json();
-
-        const groupSelect = document.getElementById("hw-group-select");
-        if (groups && groups.length > 0) {
-          groupSelect.innerHTML = groups.map(g => `<option value="${g.name}">${g.name}</option>`).join("");
+        const res = await fetch("/api/groups");
+        groupsData = await res.json();
+        if (groupsData && groupsData.length > 0) {
+          groupSelect.innerHTML = `<option value="">Guruhni tanlang...</option>` + 
+            groupsData.map(g => `<option value="${g.name}" data-id="${g.id}">${g.name} (${g.subject || 'Fan'})</option>`).join("");
         } else {
-          groupSelect.innerHTML = `<option value="Barcha guruhlar">Barcha guruhlar</option>`;
+          groupSelect.innerHTML = `<option value="Umumiy sinf">Umumiy sinf</option>`;
         }
+      } catch (e) {
+        groupSelect.innerHTML = `<option value="Umumiy sinf">Umumiy sinf</option>`;
+      }
+    }
+
+    async function loadHomeworkList() {
+      try {
+        const res = await fetch("/api/homework");
+        const list = await res.json();
+        document.getElementById("total-hw-badge").textContent = `${list.length} ta vazifa`;
 
         if (!list || list.length === 0) {
-          hwList.innerHTML = `<div class="text-center py-12 text-slate-400 text-xs">Hozircha biriktirilgan vazifalar yo'q.</div>`;
+          cardsContainer.innerHTML = `
+            <div class="text-center py-12 bg-white rounded-3xl border border-slate-200/80 p-8 text-slate-400">
+              <i data-lucide="clipboard" class="w-10 h-10 mx-auto text-slate-300 mb-2"></i>
+              <p class="font-bold text-slate-600 text-sm">Hozircha vazifalar berilmagan</p>
+              <p class="text-xs text-slate-400 mt-1">Chapdagi forma orqali birinchi uyga vazifani e'lon qiling</p>
+            </div>
+          `;
+          lucide.createIcons();
           return;
         }
 
-        hwList.innerHTML = list.map(hw => {
+        cardsContainer.innerHTML = list.map(hw => {
           const subs = hw.submissions || [];
+          const isBio = (hw.subject || "").toLowerCase().includes("bio");
+          const subjectBadge = isBio
+            ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full">
+                <i data-lucide="dna" class="w-3 h-3"></i> Biologiya
+               </span>`
+            : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 bg-purple-50 text-purple-700 text-[10px] font-bold rounded-full">
+                <i data-lucide="flask-conical" class="w-3 h-3"></i> ${hw.subject || 'Kimyo'}
+               </span>`;
+
+          const gradedCount = subs.filter(s => s.grade).length;
 
           return `
-            <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
-              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 pb-4 border-b border-slate-100">
-                <div>
-                  <div class="flex items-center gap-2 mb-1">
-                    <span class="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full">${hw.groupName || 'Barcha guruhlar'}</span>
-                    <span class="text-xs text-slate-400">&bull; Muddati: ${hw.deadline || 'Belgilanmagan'}</span>
-                  </div>
-                  <h3 class="text-base font-bold text-slate-800">${hw.title}</h3>
+            <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 pb-3 border-b border-slate-100">
+                <div class="flex items-center gap-2 flex-wrap">
+                  ${subjectBadge}
+                  <span class="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[11px] font-bold rounded-full">${hw.groupName || 'Guruh'}</span>
+                  <span class="text-xs text-slate-400 flex items-center gap-1">
+                    <i data-lucide="calendar" class="w-3.5 h-3.5"></i>
+                    Muddat: <strong class="text-slate-600 font-semibold">${hw.deadline || 'Belgilanmagan'}</strong>
+                  </span>
                 </div>
-                <span class="text-xs font-semibold text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
-                  ${subs.length} ta topshirildi
-                </span>
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-slate-600 bg-slate-100 px-3 py-1 rounded-xl">
+                    ${subs.length} ta topshirildi
+                  </span>
+                  ${subs.length > 0 ? `
+                    <span class="text-[11px] font-bold ${gradedCount === subs.length ? 'text-emerald-600 bg-emerald-50' : 'text-amber-600 bg-amber-50'} px-2.5 py-1 rounded-xl">
+                      ${gradedCount}/${subs.length} baholandi
+                    </span>
+                  ` : ''}
+                </div>
               </div>
 
-              <p class="text-xs text-slate-600 mb-5 leading-relaxed bg-slate-50 p-3.5 rounded-2xl">${hw.description}</p>
+              <h4 class="text-base font-extrabold text-slate-800 mb-2">${hw.title}</h4>
+              <p class="text-xs text-slate-600 leading-relaxed bg-slate-50 p-3.5 rounded-2xl mb-4 whitespace-pre-line">${hw.description}</p>
 
-              <!-- Submissions section -->
-              <div>
-                <h4 class="text-xs font-bold text-slate-700 uppercase tracking-wider mb-3">Topshirgan o'quvchilar javoblari:</h4>
-                
-                ${subs.length === 0 ? `
-                  <p class="text-xs text-slate-400 italic">Hali hech kim topshirmadi.</p>
-                ` : `
-                  <div class="space-y-3">
-                    ${subs.map(s => `
-                      <div class="p-4 rounded-2xl border border-slate-100 bg-slate-50/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div>
-                          <div class="flex items-center gap-2 mb-1">
-                            <span class="font-bold text-xs text-slate-800">${s.studentName || 'O\'quvchi'}</span>
-                            <span class="text-[10px] text-slate-400">&bull; ${s.submittedAt || 'Bugun'}</span>
-                          </div>
-                          <p class="text-xs text-slate-600">${s.text}</p>
-                          ${s.feedback ? `<p class="text-[11px] text-emerald-700 mt-1">Izohingiz: "${s.feedback}"</p>` : ''}
-                        </div>
-                        <div class="flex items-center gap-2">
-                          ${s.grade ? `
-                            <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-bold rounded-full">
-                              Baho: ${s.grade}
-                            </span>
-                          ` : `
-                            <button onclick="openGradeModal('${hw.id}', '${s.studentId}')" class="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm">
-                              Baholash
-                            </button>
-                          `}
-                        </div>
-                      </div>
-                    `).join("")}
-                  </div>
-                `}
+              <div class="flex items-center justify-between gap-3 pt-2">
+                <a href="/teacher/homework-grade.html?hwId=${hw.id}" 
+                  class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white rounded-xl text-xs font-bold transition">
+                  <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+                  Topshiriqlarni baholash (${subs.length}) &rarr;
+                </a>
+                <button onclick="deleteHw('${hw.id}')" title="Vazifani o'chirish" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
               </div>
             </div>
           `;
@@ -223,16 +253,23 @@
 
         lucide.createIcons();
       } catch (e) {
-        hwList.innerHTML = `<div class="text-center py-12 text-red-500 text-xs">Xatolik yuz berdi</div>`;
+        cardsContainer.innerHTML = `<div class="text-center py-12 text-red-500 text-xs">Yuklashda xatolik yuz berdi</div>`;
       }
     }
 
-    document.getElementById("create-hw-form").addEventListener("submit", async (e) => {
+    hwForm.addEventListener("submit", async (e) => {
       e.preventDefault();
       const title = document.getElementById("hw-title").value.trim();
-      const groupName = document.getElementById("hw-group-select").value;
+      const subject = document.querySelector('input[name="hw_subject"]:checked')?.value || "Biologiya";
+      const selOpt = groupSelect.options[groupSelect.selectedIndex];
+      const groupName = selOpt.value;
+      const groupId = selOpt.getAttribute("data-id") || groupName;
       const deadline = document.getElementById("hw-deadline").value;
       const description = document.getElementById("hw-desc").value.trim();
+
+      const btn = document.getElementById("publish-btn");
+      btn.disabled = true;
+      btn.textContent = "E'lon qilinmoqda...";
 
       try {
         const res = await fetch("/api/homework", {
@@ -240,52 +277,41 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title,
+            subject,
             groupName,
+            groupId,
             deadline,
             description,
-            teacherName: currentUser.fullName
+            teacherName: currentUser.fullName || "O'qituvchi"
           })
         });
 
-        if (!res.ok) throw new Error("Vazifa saqlanmadi");
-        createModal.classList.add("hidden");
-        document.getElementById("create-hw-form").reset();
-        loadTeacherHomework();
+        if (!res.ok) throw new Error("Vazifa e'lon qilinmadi");
+        hwForm.reset();
+        document.getElementById("hw-deadline").value = defaultDate.toISOString().split("T")[0];
+        updateHwSubjectUI();
+        loadHomeworkList();
       } catch (err) {
         alert("Xatolik: " + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="send" class="w-4 h-4"></i><span>Vazifani e'lon qilish</span>`;
+        lucide.createIcons();
       }
     });
 
-    window.openGradeModal = function(hwId, studentId) {
-      document.getElementById("grade-hw-id").value = hwId;
-      document.getElementById("grade-student-id").value = studentId;
-      document.getElementById("grade-feedback").value = "";
-      gradeModal.classList.remove("hidden");
+    window.deleteHw = async function(id) {
+      if (!confirm("Ushbu vazifani o'chirishni xohlaysizmi?")) return;
+      try {
+        await fetch(`/api/homework/${id}`, { method: "DELETE" });
+        loadHomeworkList();
+      } catch (e) {
+        alert("O'chirishda xatolik");
+      }
     };
 
-    document.getElementById("grade-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const hwId = document.getElementById("grade-hw-id").value;
-      const studentId = document.getElementById("grade-student-id").value;
-      const grade = document.getElementById("grade-val").value;
-      const feedback = document.getElementById("grade-feedback").value.trim();
-
-      try {
-        const res = await fetch(`/api/homework/${hwId}/grade`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ studentId, grade, feedback })
-        });
-        if (!res.ok) throw new Error("Baholashda xatolik");
-
-        gradeModal.classList.add("hidden");
-        loadTeacherHomework();
-      } catch (err) {
-        alert("Xatolik: " + err.message);
-      }
-    });
-
-    loadTeacherHomework();
+    loadGroups();
+    loadHomeworkList();
   </script>
 </body>
 </html>

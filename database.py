@@ -1,7 +1,7 @@
 import os
 import time
 from typing import Any, Dict, List, Optional
-from sqlalchemy import create_engine, Column, String, Integer, BigInteger, Text, JSON
+from sqlalchemy import create_engine, Column, String, Integer, BigInteger, Text, JSON, text
 from sqlalchemy.orm import declarative_base, sessionmaker, Session
 from dotenv import load_dotenv
 
@@ -33,6 +33,7 @@ class UserModel(Base):
     login = Column(String, unique=True, index=True)
     password = Column(String)
     fullName = Column(String)
+    email = Column(String, nullable=True, index=True)
     classGrade = Column(String, nullable=True)
     groupId = Column(String, nullable=True)
     subject = Column(String, nullable=True)
@@ -49,6 +50,7 @@ class UserModel(Base):
             "login": self.login,
             "password": self.password,
             "fullName": self.fullName,
+            "email": self.email,
             "classGrade": self.classGrade,
             "groupId": self.groupId,
             "subject": self.subject,
@@ -214,6 +216,12 @@ class TeacherTestModel(Base):
 # -------------------------------------------------------------
 def init_db():
     Base.metadata.create_all(bind=engine)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN email VARCHAR"))
+            conn.commit()
+    except Exception:
+        pass
     seed_initial_data()
 
 def get_db():

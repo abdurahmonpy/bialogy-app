@@ -279,32 +279,54 @@ async def auth_register(request: Request):
     body = await request.json()
     full_name = body.get("fullName", "").strip()
     login = body.get("login", "").strip().lower()
+    email = body.get("email", "").strip().lower()
     password = body.get("password", "").strip()
-    role = body.get("role", "student")
+    phone = body.get("phone", "").strip()
+    class_grade = body.get("classGrade", "").strip()
+    requested_role = body.get("role", "student")
 
-    if not full_name or not login or not password:
-        raise HTTPException(status_code=400, detail="Barcha maydonlarni to'ldirish shart")
+    # Teachers cannot register publicly - only students can register
+    if requested_role == "teacher":
+        raise HTTPException(
+            status_code=403,
+            detail="O'qituvchilar uchun mustaqil ro'yxatdan o'tish yopiq. Tizimga faqat o'quvchilar ro'yxatdan o'tishi mumkin."
+        )
+
+    # All fields are required!
+    if not full_name or not login or not email or not password or not phone or not class_grade:
+        raise HTTPException(
+            status_code=400,
+            detail="Barcha maydonlar (F.I.SH, email, telefon, login, parol, sinf) to'ldirilishi shart!"
+        )
+
+    if "@" not in email or "." not in email:
+        raise HTTPException(status_code=400, detail="Email manzili noto'g'ri kiritildi")
 
     db = SessionLocal()
     try:
-        existing = db.query(UserModel).filter(UserModel.login == login).first()
-        if existing:
+        existing_login = db.query(UserModel).filter(UserModel.login == login).first()
+        if existing_login:
             raise HTTPException(status_code=400, detail="Ushbu login band, boshqasini tanlang")
+
+        existing_email = db.query(UserModel).filter(UserModel.email == email).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Ushbu email bilan allaqachon ro'yxatdan o'tilgan")
 
         now = int(time.time() * 1000)
         new_user = UserModel(
-            id=f"user-{role[:4]}-{now}",
-            role=role,
+            id=f"user-stud-{now}",
+            role="student",
             login=login,
+            email=email,
             password=password,
             fullName=full_name,
-            classGrade=body.get("classGrade", "8-A sinf"),
-            groupId=body.get("groupId", "group-8a"),
-            subject=body.get("subject", "Biologiya"),
-            school=body.get("school", "14-sonli umumiy o'rta ta'lim maktabi"),
-            phone=body.get("phone", "+998 90 000 00 00"),
+            classGrade=class_grade,
+            groupId=body.get("groupId"),
+            subject=None,
+            school=None,
+            phone=phone,
             streakDays=1,
-            avatar=full_name[0].upper() if full_name else "F",
+            avatar=full_name[0].upper() if full_name else "O",
             createdAt=now
         )
         db.add(new_user)
@@ -336,33 +358,198 @@ async def get_groups():
     db = SessionLocal()
     try:
         groups = db.query(GroupModel).order_by(GroupModel.createdAt.desc()).all()
-        return [g.to_dict() for g in groups]
+        result = []
+        for g in groups:
+            data = g.to_dict()
+            cnt = db.query(UserModel).filter(
+                (UserModel.role == "student") &
+                ((UserModel.groupId == g.id) | (UserModel.classGrade == g.name))
+            ).count()
+            data["studentCount"] = max(cnt, g.studentCount or 0)
+            result.append(data)
+        return result
     finally:
         db.close()
 
 @app.post("/api/groups")
 async def create_group(request: Request):
     body = await request.json()
-    name = body.get("name")
+    name = (body.get("name") or "").strip()
     if not name:
         raise HTTPException(status_code=400, detail="Guruh nomi ko'rsatilmadi")
+
+    subject = body.get("subject", "Biologiya")
+    schedule = body.get("schedule", "Dush-Chor-Juma 09:00")
+    student_ids = body.get("studentIds") or []
 
     db = SessionLocal()
     try:
         now = int(time.time() * 1000)
+        group_id = f"group-{now}"
         new_group = GroupModel(
-            id=f"group-{now}",
+            id=group_id,
             name=name,
-            grade=body.get("grade", "8-sinf"),
-            subject=body.get("subject", "Biologiya"),
-            schedule=body.get("schedule", "Dush-Chor-Juma 09:00"),
-            studentCount=int(body.get("studentCount", 0)),
+            grade=body.get("grade") or (name.split()[0] if name else "8-sinf"),
+            subject=subject,
+            schedule=schedule,
+            studentCount=len(student_ids),
             description=body.get("description", ""),
             createdAt=now
         )
         db.add(new_group)
+
+        if student_ids:
+            students = db.query(UserModel).filter(UserModel.id.in_(student_ids)).all()
+            for s in students:
+                s.groupId = group_id
+
         db.commit()
-        return {"success": True, "group": new_group.to_dict()}
+        data = new_group.to_dict()
+        data["studentCount"] = len(student_ids)
+        return {"success": True, "group": data}
+    finally:
+        db.close()
+
+@app.get("/api/groups/{group_id}/statistics")
+async def get_group_statistics(group_id: str):
+    db = SessionLocal()
+    try:
+        grp = db.query(GroupModel).filter(GroupModel.id == group_id).first()
+        if not grp:
+            raise HTTPException(status_code=404, detail="Guruh topilmadi")
+
+        students = db.query(UserModel).filter(
+            (UserModel.role == "student") &
+            ((UserModel.groupId == grp.id) | (UserModel.classGrade == grp.name))
+        ).order_by(UserModel.fullName.asc()).all()
+        student_ids = [s.id for s in students]
+
+        hws = db.query(HomeworkModel).filter(
+            (HomeworkModel.groupId == grp.id) | (HomeworkModel.groupName == grp.name)
+        ).all()
+        total_hw = len(hws)
+
+        submissions = db.query(SubmissionModel).filter(
+            (SubmissionModel.studentId.in_(student_ids)) |
+            (SubmissionModel.classGrade == grp.name) |
+            (SubmissionModel.studentClass == grp.name)
+        ).order_by(SubmissionModel.timestamp.desc()).all()
+
+        student_list = []
+        for s in students:
+            s_subs = [sub for sub in submissions if sub.studentId == s.id]
+            avg_test = round(sum(sub.percentage for sub in s_subs) / len(s_subs)) if s_subs else 0
+
+            hw_submitted = 0
+            for hw in hws:
+                subs_list = hw.submissions or []
+                if any(sub.get("studentId") == s.id for sub in subs_list):
+                    hw_submitted += 1
+            hw_pct = round((hw_submitted / max(total_hw, 1)) * 100) if total_hw > 0 else 0
+
+            student_list.append({
+                "id": s.id,
+                "fullName": s.fullName,
+                "login": s.login,
+                "phone": s.phone,
+                "classGrade": s.classGrade,
+                "avatar": s.avatar or (s.fullName[0].upper() if s.fullName else "O"),
+                "testCount": len(s_subs),
+                "avgTestScore": avg_test,
+                "hwSubmitted": hw_submitted,
+                "totalHw": total_hw,
+                "hwPercentage": hw_pct,
+                "recentTests": [sub.to_dict() for sub in s_subs[:6]]
+            })
+
+        students_with_tests = [s for s in student_list if s["testCount"] > 0]
+        group_avg_test = round(sum(s["avgTestScore"] for s in students_with_tests) / len(students_with_tests)) if students_with_tests else 0
+        group_avg_hw = round(sum(s["hwPercentage"] for s in student_list) / len(student_list)) if student_list else 0
+
+        dist = {
+            "high": len([s for s in student_list if s["avgTestScore"] >= 85]),
+            "mid": len([s for s in student_list if 70 <= s["avgTestScore"] < 85]),
+            "low": len([s for s in student_list if 50 <= s["avgTestScore"] < 70]),
+            "poor": len([s for s in student_list if s["avgTestScore"] < 50 and s["testCount"] > 0])
+        }
+
+        hw_dist = {
+            "submitted": sum(s["hwSubmitted"] for s in student_list),
+            "pending": max((total_hw * len(student_list)) - sum(s["hwSubmitted"] for s in student_list), 0)
+        }
+
+        return {
+            "group": grp.to_dict(),
+            "studentsCount": len(student_list),
+            "averageTestScore": group_avg_test,
+            "averageHwRate": group_avg_hw,
+            "totalSubmissions": len(submissions),
+            "totalHomeworkAssigned": total_hw,
+            "scoreDistribution": dist,
+            "hwDistribution": hw_dist,
+            "students": student_list
+        }
+    finally:
+        db.close()
+
+@app.get("/api/students/{student_id}/statistics")
+async def get_student_statistics(student_id: str):
+    db = SessionLocal()
+    try:
+        student = db.query(UserModel).filter(UserModel.id == student_id).first()
+        if not student:
+            raise HTTPException(status_code=404, detail="O'quvchi topilmadi")
+
+        subs = db.query(SubmissionModel).filter(
+            SubmissionModel.studentId == student.id
+        ).order_by(SubmissionModel.timestamp.desc()).all()
+
+        hws = db.query(HomeworkModel).filter(
+            (HomeworkModel.groupId == student.groupId) |
+            (HomeworkModel.groupName == student.classGrade)
+        ).all()
+
+        hw_details = []
+        hw_submitted_cnt = 0
+        for hw in hws:
+            s_list = hw.submissions or []
+            my_sub = next((sub for sub in s_list if sub.get("studentId") == student.id), None)
+            if my_sub:
+                hw_submitted_cnt += 1
+                hw_details.append({
+                    "id": hw.id,
+                    "title": hw.title,
+                    "deadline": hw.deadline,
+                    "status": "submitted",
+                    "submittedAt": my_sub.get("submittedAt"),
+                    "grade": my_sub.get("grade"),
+                    "feedback": my_sub.get("feedback") or my_sub.get("teacherFeedback")
+                })
+            else:
+                hw_details.append({
+                    "id": hw.id,
+                    "title": hw.title,
+                    "deadline": hw.deadline,
+                    "status": "pending",
+                    "submittedAt": None,
+                    "grade": None,
+                    "feedback": None
+                })
+
+        avg_test = round(sum(s.percentage for s in subs) / len(subs)) if subs else 0
+        total_hw = len(hws)
+        hw_pct = round((hw_submitted_cnt / max(total_hw, 1)) * 100) if total_hw > 0 else 0
+
+        return {
+            "student": student.to_dict(),
+            "averageTestScore": avg_test,
+            "totalTestsTaken": len(subs),
+            "hwSubmittedCount": hw_submitted_cnt,
+            "totalHomeworkAssigned": total_hw,
+            "hwPercentage": hw_pct,
+            "submissions": [s.to_dict() for s in subs],
+            "homeworks": hw_details
+        }
     finally:
         db.close()
 
@@ -372,6 +559,9 @@ async def delete_group(group_id: str):
     try:
         grp = db.query(GroupModel).filter(GroupModel.id == group_id).first()
         if grp:
+            students = db.query(UserModel).filter(UserModel.groupId == group_id).all()
+            for s in students:
+                s.groupId = None
             db.delete(grp)
             db.commit()
         return {"success": True}
@@ -411,15 +601,17 @@ async def add_student(request: Request):
         class_grade = body.get("classGrade", "8-A sinf")
         group_id = body.get("groupId", "group-8a")
 
+        email = body.get("email", "").strip().lower()
         new_student = UserModel(
             id=f"user-stud-{now}",
             role="student",
             login=login,
+            email=email if email else None,
             password=body.get("password") or "123",
             fullName=full_name,
             classGrade=class_grade,
             groupId=group_id,
-            school=body.get("school", "14-sonli umumiy o'rta ta'lim maktabi"),
+            school=None,
             phone=body.get("phone", "+998 90 000 00 00"),
             streakDays=1,
             avatar=full_name[0].upper() if full_name else "O",
@@ -557,6 +749,78 @@ async def grade_homework(hw_id: str, request: Request):
         hw.submissions = subs
         db.commit()
         return {"success": True, "message": "Baho va taqriz saqlandi"}
+    finally:
+        db.close()
+
+@app.delete("/api/homework/{hw_id}")
+async def delete_homework(hw_id: str):
+    db = SessionLocal()
+    try:
+        hw = db.query(HomeworkModel).filter(HomeworkModel.id == hw_id).first()
+        if hw:
+            db.delete(hw)
+            db.commit()
+        return {"success": True}
+    finally:
+        db.close()
+
+@app.get("/api/homework/statistics")
+async def get_homework_statistics():
+    db = SessionLocal()
+    try:
+        hws = db.query(HomeworkModel).all()
+        students = db.query(UserModel).filter(UserModel.role == "student").all()
+        groups = db.query(GroupModel).all()
+
+        total_hw = len(hws)
+        all_submissions = []
+        for hw in hws:
+            subs = hw.submissions or []
+            for s in subs:
+                all_submissions.append({**s, "hwId": hw.id, "hwTitle": hw.title, "groupName": hw.groupName})
+
+        total_subs = len(all_submissions)
+        graded_subs = len([s for s in all_submissions if s.get("grade")])
+        graded_pct = round((graded_subs / max(total_subs, 1)) * 100) if total_subs else 0
+
+        grade_counts = {"5": 0, "4": 0, "3": 0, "2": 0}
+        for s in all_submissions:
+            g = str(s.get("grade") or "")
+            if "5" in g: grade_counts["5"] += 1
+            elif "4" in g: grade_counts["4"] += 1
+            elif "3" in g: grade_counts["3"] += 1
+            elif "2" in g: grade_counts["2"] += 1
+
+        group_stats = []
+        for grp in groups:
+            gr_hws = [h for h in hws if h.groupId == grp.id or h.groupName == grp.name]
+            gr_studs = [st for st in students if st.groupId == grp.id or st.classGrade == grp.name]
+            gr_subs = []
+            for h in gr_hws:
+                gr_subs.extend(h.submissions or [])
+
+            expected = len(gr_hws) * max(len(gr_studs), 1)
+            rate = round((len(gr_subs) / max(expected, 1)) * 100) if expected else 0
+
+            group_stats.append({
+                "id": grp.id,
+                "name": grp.name,
+                "subject": grp.subject,
+                "hwCount": len(gr_hws),
+                "studentCount": len(gr_studs),
+                "submissionCount": len(gr_subs),
+                "rate": min(rate, 100)
+            })
+
+        return {
+            "totalHomework": total_hw,
+            "totalSubmissions": total_subs,
+            "gradedSubmissions": graded_subs,
+            "gradedPercentage": graded_pct,
+            "averageSubmissionRate": round(sum(g["rate"] for g in group_stats) / max(len(group_stats), 1)) if group_stats else 0,
+            "gradeCounts": grade_counts,
+            "groupStats": group_stats
+        }
     finally:
         db.close()
 

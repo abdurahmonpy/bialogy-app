@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vazifalar Statistikasi | O'qituvchi Portali</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 6px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen">
+
+  <div class="flex flex-col lg:flex-row min-h-screen">
+    <!-- Teacher Sidebar Container -->
+    <div id="teacher-sidebar"></div>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 lg:p-8 overflow-y-auto">
+      
+      <!-- Page Header -->
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div>
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold mb-1">
+            <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+            Topshiriqlar tahlili
+          </div>
+          <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Uyga vazifalar statistikasi</h1>
+          <p class="text-xs text-slate-500">Guruhlar faolligi, topshirish ko'rsatkichlari va baholar taqsimoti</p>
+        </div>
+        <div class="flex items-center gap-2">
+          <a href="/teacher/homework.html" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition shadow-sm">
+            <i data-lucide="plus-circle" class="w-4 h-4 text-indigo-600"></i>
+            Vazifa berish
+          </a>
+          <a href="/teacher/homework-grade.html" class="inline-flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition shadow-sm">
+            <i data-lucide="check-circle" class="w-4 h-4 text-emerald-600"></i>
+            Baholash bo'limi
+          </a>
+        </div>
+      </div>
+
+      <!-- Top 4 Summary Cards -->
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Berilgan vazifalar</div>
+          <div class="text-3xl font-extrabold text-indigo-600" id="stat-total-hw">0</div>
+          <p class="text-[11px] text-slate-400 mt-1">E'lon qilingan topshiriqlar</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Topshirilgan javoblar</div>
+          <div class="text-3xl font-extrabold text-emerald-600" id="stat-total-subs">0</div>
+          <p class="text-[11px] text-slate-400 mt-1">O'quvchilar javoblari</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">Baholangan ishlar</div>
+          <div class="text-3xl font-extrabold text-purple-600" id="stat-graded-pct">0%</div>
+          <p class="text-[11px] text-slate-400 mt-1" id="stat-graded-detail">0 ta baholandi</p>
+        </div>
+
+        <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-sm">
+          <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">O'rtacha faollik</div>
+          <div class="text-3xl font-extrabold text-amber-600" id="stat-avg-rate">0%</div>
+          <p class="text-[11px] text-slate-400 mt-1">Guruhlar bo'yicha</p>
+        </div>
+      </div>
+
+      <!-- Charts Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Chart 1: Group Submission Rate -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+          <h3 class="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="bar-chart" class="w-4 h-4 text-indigo-600"></i>
+            Guruhlar kesimida vazifa topshirish ko'rsatkichi (%)
+          </h3>
+          <div class="h-60 relative">
+            <canvas id="groupRateChart"></canvas>
+          </div>
+        </div>
+
+        <!-- Chart 2: Grade Breakdown -->
+        <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
+          <h3 class="text-sm font-extrabold text-slate-800 mb-4 flex items-center gap-2">
+            <i data-lucide="pie-chart" class="w-4 h-4 text-purple-600"></i>
+            Baholar taqsimoti (5, 4, 3, 2)
+          </h3>
+          <div class="h-60 relative flex items-center justify-center">
+            <canvas id="gradeDoughnutChart"></canvas>
+          </div>
+        </div>
+      </div>
+
+      <!-- Groups Breakdown Table -->
+      <div class="bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+        <div class="p-5 border-b border-slate-100 flex items-center justify-between">
+          <h3 class="text-sm font-extrabold text-slate-800 flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4 text-indigo-600"></i>
+            Guruhlar bo'yicha batafsil hisobot
+          </h3>
+          <span class="text-xs text-slate-400">Har bir guruhning topshirish davomati</span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs">
+            <thead class="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
+              <tr>
+                <th class="p-4">Guruh nomi</th>
+                <th class="p-4">Fan</th>
+                <th class="p-4">Vazifalar soni</th>
+                <th class="p-4">O'quvchilar soni</th>
+                <th class="p-4">Kelib tushgan javoblar</th>
+                <th class="p-4">Topshirish ko'rsatkichi</th>
+              </tr>
+            </thead>
+            <tbody id="group-stats-tbody" class="divide-y divide-slate-100">
+              <tr><td colspan="6" class="p-6 text-center text-slate-400">Ma'lumotlar yuklanmoqda...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script src="/js/teacher-nav.js"></script>
+  <script>
+    const currentUser = Auth.requireAuth("teacher");
+    renderTeacherSidebar("Statistika qismi");
+
+    let groupRateChart = null;
+    let gradeDoughnutChart = null;
+
+    async function loadStats() {
+      try {
+        const res = await fetch("/api/homework/statistics");
+        const data = await res.json();
+
+        // Fill KPIs
+        document.getElementById("stat-total-hw").textContent = data.totalHomework || 0;
+        document.getElementById("stat-total-subs").textContent = data.totalSubmissions || 0;
+        document.getElementById("stat-graded-pct").textContent = `${data.gradedPercentage || 0}%`;
+        document.getElementById("stat-graded-detail").textContent = `${data.gradedSubmissions || 0} ta baholandi`;
+        document.getElementById("stat-avg-rate").textContent = `${data.averageSubmissionRate || 0}%`;
+
+        // Render Charts
+        renderCharts(data);
+
+        // Render Table
+        renderTable(data.groupStats || []);
+
+        lucide.createIcons();
+      } catch (e) {
+        console.error("Error loading hw stats:", e);
+      }
+    }
+
+    function renderCharts(data) {
+      // 1. Bar Chart: Group Submission Rate
+      const ctxRate = document.getElementById("groupRateChart").getContext("2d");
+      if (groupRateChart) groupRateChart.destroy();
+
+      const groups = data.groupStats || [];
+      const labels = groups.length > 0 ? groups.map(g => g.name) : ["Guruh 1", "Guruh 2"];
+      const rates = groups.length > 0 ? groups.map(g => g.rate) : [75, 85];
+
+      groupRateChart = new Chart(ctxRate, {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "Topshirish foizi (%)",
+            data: rates,
+            backgroundColor: "#6366f1",
+            borderRadius: 8
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            y: { min: 0, max: 100, ticks: { callback: v => v + '%' } }
+          }
+        }
+      });
+
+      // 2. Doughnut Chart: Grades
+      const ctxGrade = document.getElementById("gradeDoughnutChart").getContext("2d");
+      if (gradeDoughnutChart) gradeDoughnutChart.destroy();
+
+      const gc = data.gradeCounts || { "5": 0, "4": 0, "3": 0, "2": 0 };
+      const totalGraded = (gc["5"] || 0) + (gc["4"] || 0) + (gc["3"] || 0) + (gc["2"] || 0);
+
+      gradeDoughnutChart = new Chart(ctxGrade, {
+        type: 'doughnut',
+        data: {
+          labels: ["5 (A'lo)", "4 (Yaxshi)", "3 (Qoniqarli)", "2 (Qayta)"],
+          datasets: [{
+            data: totalGraded > 0 ? [gc["5"], gc["4"], gc["3"], gc["2"]] : [1, 1, 1, 0],
+            backgroundColor: ["#10b981", "#3b82f6", "#f59e0b", "#ef4444"],
+            borderWidth: 2,
+            borderColor: '#ffffff'
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { boxWidth: 12, font: { size: 11 } } }
+          },
+          cutout: '70%'
+        }
+      });
+    }
+
+    function renderTable(groupStats) {
+      const tbody = document.getElementById("group-stats-tbody");
+      if (!groupStats || groupStats.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="p-6 text-center text-slate-400 italic">Hali guruhlar faoliyati bo'yicha ma'lumot yo'q</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = groupStats.map(g => {
+        const rateColor = g.rate >= 80 ? "text-emerald-600 bg-emerald-50" : (g.rate >= 60 ? "text-blue-600 bg-blue-50" : "text-amber-600 bg-amber-50");
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="p-4 font-bold text-slate-800">${g.name}</td>
+            <td class="p-4">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold ${g.subject === 'Kimyo' ? 'bg-purple-50 text-purple-700' : 'bg-emerald-50 text-emerald-700'}">
+                ${g.subject || 'Biologiya'}
+              </span>
+            </td>
+            <td class="p-4 font-semibold text-slate-600">${g.hwCount} ta vazifa</td>
+            <td class="p-4 text-slate-500">${g.studentCount} o'quvchi</td>
+            <td class="p-4 text-slate-700 font-bold">${g.submissionCount} ta</td>
+            <td class="p-4">
+              <span class="px-2.5 py-1 rounded-full font-extrabold text-[11px] ${rateColor}">
+                ${g.rate}%
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join("");
+    }
+
+    loadStats();
+  </script>
+</body>
+</html>

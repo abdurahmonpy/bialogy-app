@@ -76,8 +76,8 @@
       </form>
 
       <!-- Registration link -->
-      <div class="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
-        Hisobingiz yo'qmi? 
+      <div id="register-link-container" class="mt-6 pt-5 border-t border-slate-100 text-center text-xs text-slate-500">
+        O'quvchimisiz va hisobingiz yo'qmi? 
         <a href="/register.html" class="font-bold text-emerald-600 hover:text-emerald-700 hover:underline">Ro'yxatdan o'tish</a>
       </div>
     </div>
@@ -110,6 +110,7 @@
 
     function setRole(role) {
       selectedRole = role;
+      const regContainer = document.getElementById("register-link-container");
       if (role === "student") {
         roleStudentBtn.className = "flex-1 py-2.5 rounded-xl font-bold text-sm text-emerald-700 bg-white shadow-sm transition-all flex items-center justify-center gap-2";
         roleTeacherBtn.className = "flex-1 py-2.5 rounded-xl font-semibold text-sm text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center gap-2";
@@ -118,6 +119,12 @@
           <p class="text-xs text-slate-500">Tizimga kirish uchun login va parolingizni kiriting</p>
         `;
         submitBtn.className = "w-full py-3.5 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-500/25 transition-all text-sm flex items-center justify-center gap-2";
+        if (regContainer) {
+          regContainer.innerHTML = `
+            O'quvchimisiz va hisobingiz yo'qmi? 
+            <a href="/register.html" class="font-bold text-emerald-600 hover:text-emerald-700 hover:underline">Ro'yxatdan o'tish</a>
+          `;
+        }
       } else {
         roleTeacherBtn.className = "flex-1 py-2.5 rounded-xl font-bold text-sm text-indigo-700 bg-white shadow-sm transition-all flex items-center justify-center gap-2";
         roleStudentBtn.className = "flex-1 py-2.5 rounded-xl font-semibold text-sm text-slate-500 hover:text-slate-800 transition-all flex items-center justify-center gap-2";
@@ -126,6 +133,11 @@
           <p class="text-xs text-slate-500">O'qituvchi boshqaruv paneliga kirish</p>
         `;
         submitBtn.className = "w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-500/25 transition-all text-sm flex items-center justify-center gap-2";
+        if (regContainer) {
+          regContainer.innerHTML = `
+            <span class="text-slate-400">Ustozlar hisobi administrator yoki maktab tomonidan beriladi.</span>
+          `;
+        }
       }
       lucide.createIcons();
     }

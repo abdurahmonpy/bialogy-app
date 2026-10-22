@@ -6,7 +6,15 @@
     { label: "Bosh sahifa", path: "/teacher/index.html", cleanPath: "/teacher", icon: "layout-dashboard" },
     { label: "Chat", path: "/teacher/chat.html", cleanPath: "/teacher/chat", icon: "message-circle" },
     { label: "Guruhlarim", path: "/teacher/groups.html", cleanPath: "/teacher/groups", icon: "users" },
-    { label: "Uyga vazifa", path: "/teacher/homework.html", cleanPath: "/teacher/homework", icon: "clipboard-list" },
+    {
+      label: "Uyga vazifa",
+      icon: "clipboard-list",
+      subItems: [
+        { label: "Uyga vazifa berish", path: "/teacher/homework.html", cleanPath: "/teacher/homework", icon: "plus-circle" },
+        { label: "Baholash", path: "/teacher/homework-grade.html", cleanPath: "/teacher/homework-grade", icon: "check-circle" },
+        { label: "Statistika qismi", path: "/teacher/homework-stats.html", cleanPath: "/teacher/homework-stats", icon: "bar-chart-2" }
+      ]
+    },
     { label: "O'quvchilar", path: "/teacher/students.html", cleanPath: "/teacher/students", icon: "graduation-cap" },
     { label: "Test Markaz", path: "/teacher/test.html", cleanPath: "/teacher/test", icon: "file-check" },
     { label: "Statistika", path: "/teacher/stats.html", cleanPath: "/teacher/stats", icon: "bar-chart-3" },
@@ -14,10 +22,41 @@
     { label: "O'quvchi qo'shish", path: "/teacher/add-student.html", cleanPath: "/teacher/add-student", icon: "user-plus" }
   ];
 
-  window.renderTeacherSidebar = function(activeKey = "") {
-    const user = (window.Auth && window.Auth.getCurrentUser()) || { fullName: "O'qituvchi", subject: "Biologiya fani", avatar: "O" };
+  function renderNavItems(activeKey = "", isMobile = false) {
+    const prefix = isMobile ? "mobile-" : "";
+    return menuItems.map(item => {
+      if (item.subItems) {
+        const isAnySubActive = item.subItems.some(sub => 
+          (activeKey && activeKey.toLowerCase() === sub.label.toLowerCase()) ||
+          currentPath === sub.cleanPath || currentPath === sub.path
+        );
 
-    const navLinksHtml = menuItems.map(item => {
+        return `
+          <div class="space-y-1">
+            <button type="button" onclick="window.toggleHwMenu()" 
+              class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl transition-all duration-200 cursor-pointer ${isAnySubActive ? 'bg-indigo-50 text-indigo-700 font-semibold' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900 font-medium'}">
+              <div class="flex items-center gap-3.5 min-w-0">
+                <i data-lucide="${item.icon}" class="w-5 h-5 flex-shrink-0 ${isAnySubActive ? 'text-indigo-600' : ''}"></i>
+                <span class="text-sm tracking-wide truncate">${item.label}</span>
+              </div>
+              <i data-lucide="chevron-down" id="${prefix}hw-chevron" class="w-4 h-4 text-slate-400 transition-transform duration-200 ${isAnySubActive ? 'rotate-180 text-indigo-600' : ''}"></i>
+            </button>
+            <div id="${prefix}hw-submenu" class="pl-6 pr-1 space-y-1 ${isAnySubActive ? '' : 'hidden'}">
+              ${item.subItems.map(sub => {
+                const isSubActive = (activeKey && activeKey.toLowerCase() === sub.label.toLowerCase()) ||
+                  currentPath === sub.cleanPath || currentPath === sub.path;
+                return `
+                  <a href="${sub.path}" class="flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs transition ${isSubActive ? 'bg-indigo-600 text-white font-bold shadow-sm' : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-50 font-medium'}">
+                    <i data-lucide="${sub.icon}" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                    <span class="truncate">${sub.label}</span>
+                  </a>
+                `;
+              }).join("")}
+            </div>
+          </div>
+        `;
+      }
+
       const isActive = activeKey 
         ? item.label.toLowerCase() === activeKey.toLowerCase()
         : (currentPath === item.cleanPath || currentPath === item.path || (item.cleanPath === "/teacher" && (currentPath === "" || currentPath === "/teacher")));
@@ -34,6 +73,31 @@
         </a>
       `;
     }).join("");
+  }
+
+  window.toggleHwMenu = function() {
+    ['', 'mobile-'].forEach(prefix => {
+      const sub = document.getElementById(`${prefix}hw-submenu`);
+      const chev = document.getElementById(`${prefix}hw-chevron`);
+      if (sub) {
+        const isHidden = sub.classList.contains("hidden");
+        if (isHidden) {
+          sub.classList.remove("hidden");
+          if (chev) chev.classList.add("rotate-180");
+        } else {
+          sub.classList.add("hidden");
+          if (chev) chev.classList.remove("rotate-180");
+        }
+      }
+    });
+    if (window.lucide) window.lucide.createIcons();
+  };
+
+  window.renderTeacherSidebar = function(activeKey = "") {
+    const user = (window.Auth && window.Auth.getCurrentUser()) || { fullName: "O'qituvchi", subject: "Biologiya fani", avatar: "O" };
+
+    const navLinksHtml = renderNavItems(activeKey, false);
+    const mobileNavLinksHtml = renderNavItems(activeKey, true);
 
     const sidebarContainer = document.getElementById("teacher-sidebar");
     if (!sidebarContainer) return;
@@ -80,6 +144,12 @@
         </div>
       </aside>
 
+      <!-- Desktop Sidebar Reopen Button (shown only on lg+ when sidebar is closed) -->
+      <button id="sidebar-reopen-btn" onclick="window.toggleSidebar()" title="Menyuni ochish"
+        class="hidden fixed left-0 top-5 z-40 bg-white border border-l-0 border-slate-200 shadow-md py-2 px-1.5 rounded-r-xl text-slate-500 hover:text-indigo-600 hover:bg-slate-50 transition cursor-pointer">
+        <i data-lucide="panel-left-open" class="w-5 h-5"></i>
+      </button>
+
       <!-- Mobile Header & Drawer -->
       <div class="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between">
         <div class="flex items-center gap-2.5">
@@ -108,7 +178,7 @@
             </button>
           </div>
           <nav class="space-y-1 flex-1 overflow-y-auto">
-            ${navLinksHtml}
+            ${mobileNavLinksHtml}
           </nav>
           <div class="pt-4 border-t border-slate-100 mt-auto">
             <button onclick="Auth.logout()" class="w-full flex items-center justify-center gap-2 p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl font-medium transition text-sm">
@@ -138,18 +208,34 @@
       });
     }
 
-    if (localStorage.getItem("teacher_sidebar_closed") === "true") {
-      const desktopSidebar = document.getElementById("desktop-sidebar");
-      if (desktopSidebar) desktopSidebar.classList.add("lg:hidden");
+    const isClosed = localStorage.getItem("teacher_sidebar_closed") === "true";
+    const desktopSidebar = document.getElementById("desktop-sidebar");
+    const reopenBtn = document.getElementById("sidebar-reopen-btn");
+    if (isClosed && desktopSidebar) {
+      desktopSidebar.classList.add("lg:hidden");
+      if (reopenBtn) {
+        reopenBtn.classList.remove("hidden");
+        reopenBtn.classList.add("lg:flex");
+      }
     }
   };
 
   window.toggleSidebar = function() {
     const desktopSidebar = document.getElementById("desktop-sidebar");
+    const reopenBtn = document.getElementById("sidebar-reopen-btn");
     if (!desktopSidebar) return;
     desktopSidebar.classList.toggle("lg:hidden");
     const isClosed = desktopSidebar.classList.contains("lg:hidden");
     localStorage.setItem("teacher_sidebar_closed", isClosed ? "true" : "false");
+    if (reopenBtn) {
+      if (isClosed) {
+        reopenBtn.classList.remove("hidden");
+        reopenBtn.classList.add("lg:flex");
+      } else {
+        reopenBtn.classList.remove("lg:flex");
+        reopenBtn.classList.add("hidden");
+      }
+    }
     if (window.lucide) window.lucide.createIcons();
   };
 })();
