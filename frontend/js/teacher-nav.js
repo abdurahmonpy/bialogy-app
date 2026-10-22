@@ -40,16 +40,21 @@
 
     sidebarContainer.innerHTML = `
       <!-- Desktop Sidebar -->
-      <aside class="hidden lg:flex flex-col w-72 h-screen sticky top-0 bg-white border-r border-slate-200/80 p-4 shadow-sm z-30">
+      <aside id="desktop-sidebar" class="hidden lg:flex flex-col w-72 h-screen sticky top-0 bg-white border-r border-slate-200/80 p-4 shadow-sm z-30 transition-all duration-200">
         <!-- Logo -->
-        <div class="flex items-center gap-3 px-2 py-2 mb-4">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
-            <i data-lucide="award" class="w-6 h-6"></i>
+        <div class="flex items-center justify-between px-2 py-2 mb-4">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-purple-600 flex items-center justify-center text-white shadow-md shadow-indigo-500/25">
+              <i data-lucide="award" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <h1 class="text-base font-bold text-slate-800 leading-tight">BioEdu Ustoz</h1>
+              <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">O'qituvchi Portali</span>
+            </div>
           </div>
-          <div>
-            <h1 class="text-base font-bold text-slate-800 leading-tight">BioEdu Ustoz</h1>
-            <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-full">O'qituvchi Portali</span>
-          </div>
+          <button onclick="window.toggleSidebar()" title="Menyuni yashirish" class="hidden lg:flex p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition">
+            <i data-lucide="panel-left-close" class="w-4 h-4"></i>
+          </button>
         </div>
 
         <!-- Navigation Menu -->
@@ -132,5 +137,19 @@
         if (e.target === drawer) drawer.classList.add("hidden");
       });
     }
+
+    if (localStorage.getItem("teacher_sidebar_closed") === "true") {
+      const desktopSidebar = document.getElementById("desktop-sidebar");
+      if (desktopSidebar) desktopSidebar.classList.add("lg:hidden");
+    }
+  };
+
+  window.toggleSidebar = function() {
+    const desktopSidebar = document.getElementById("desktop-sidebar");
+    if (!desktopSidebar) return;
+    desktopSidebar.classList.toggle("lg:hidden");
+    const isClosed = desktopSidebar.classList.contains("lg:hidden");
+    localStorage.setItem("teacher_sidebar_closed", isClosed ? "true" : "false");
+    if (window.lucide) window.lucide.createIcons();
   };
 })();
