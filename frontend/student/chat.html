@@ -65,20 +65,6 @@
                 <p class="text-[11px] text-slate-500 truncate">Sinfdoshlar umumiy muloqoti</p>
               </div>
             </button>
-
-            <!-- Channel 3: AI Biology Tutor -->
-            <button onclick="selectChannel('ai')" id="channel-ai" class="w-full p-3 rounded-2xl flex items-center gap-3 hover:bg-slate-50 text-slate-800 transition text-left group">
-              <div class="w-11 h-11 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold flex items-center justify-center flex-shrink-0 shadow-sm">
-                <i data-lucide="sparkles" class="w-5 h-5"></i>
-              </div>
-              <div class="flex-1 min-w-0">
-                <div class="flex items-center justify-between mb-0.5">
-                  <h4 class="text-xs font-bold text-slate-800 truncate">AI Biologiya Repititori</h4>
-                  <span class="text-[10px] text-emerald-600 font-semibold">24/7 faol</span>
-                </div>
-                <p class="text-[11px] text-slate-500 truncate">Istalgan biologik savolga javob</p>
-              </div>
-            </button>
           </div>
         </div>
 
@@ -133,7 +119,7 @@
     const currentUser = Auth.requireAuth("student");
     renderStudentSidebar("Chat");
 
-    let currentChannel = "teacher"; // 'teacher', 'group', 'ai'
+    let currentChannel = "teacher"; // 'teacher', 'group'
 
     const messageContainer = document.getElementById("message-container");
     const chatForm = document.getElementById("chat-form");
@@ -142,15 +128,10 @@
     const chatHeaderStatus = document.getElementById("chat-header-status");
     const chatHeaderAvatar = document.getElementById("chat-header-avatar");
 
-    // Check query params if AI was requested
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get("ai") === "1") {
-      currentChannel = "ai";
-    }
-
     function updateChannelUI() {
-      ['teacher', 'group', 'ai'].forEach(ch => {
+      ['teacher', 'group'].forEach(ch => {
         const btn = document.getElementById(`channel-${ch}`);
+        if (!btn) return;
         if (ch === currentChannel) {
           btn.className = "w-full p-3 rounded-2xl flex items-center gap-3 bg-emerald-50 text-slate-800 transition text-left group border border-emerald-100";
         } else {
@@ -163,16 +144,11 @@
         chatHeaderStatus.textContent = "Biologiya fani o'qituvchisi • Onlayn";
         chatHeaderAvatar.className = "w-10 h-10 rounded-full bg-indigo-600 text-white font-bold flex items-center justify-center";
         chatHeaderAvatar.innerHTML = "A";
-      } else if (currentChannel === "group") {
-        chatHeaderName.textContent = "8-A Biologiya guruhi";
-        chatHeaderStatus.textContent = "24 ta o'quvchi • Sinf chat";
+      } else {
+        chatHeaderName.textContent = currentUser?.classGrade ? `${currentUser.classGrade} guruhi` : "Biologiya guruhi";
+        chatHeaderStatus.textContent = "Sinfdoshlar umumiy muloqot guruhi";
         chatHeaderAvatar.className = "w-10 h-10 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center";
         chatHeaderAvatar.innerHTML = `<i data-lucide="users" class="w-5 h-5"></i>`;
-      } else {
-        chatHeaderName.textContent = "AI Biologiya Repititori";
-        chatHeaderStatus.textContent = "Gemini AI • Sun'iy intellekt yordamchi";
-        chatHeaderAvatar.className = "w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-bold flex items-center justify-center";
-        chatHeaderAvatar.innerHTML = `<i data-lucide="sparkles" class="w-5 h-5"></i>`;
       }
       lucide.createIcons();
       loadMessages();

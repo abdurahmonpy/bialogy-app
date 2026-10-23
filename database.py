@@ -40,6 +40,7 @@ class UserModel(Base):
     school = Column(String, nullable=True)
     phone = Column(String, nullable=True)
     streakDays = Column(Integer, default=1)
+    status = Column(String, default="pending") # "pending" or "approved"
     avatar = Column(String, nullable=True)
     createdAt = Column(BigInteger, default=lambda: int(time.time() * 1000))
 
@@ -57,6 +58,7 @@ class UserModel(Base):
             "school": self.school,
             "phone": self.phone,
             "streakDays": self.streakDays,
+            "status": self.status or ("approved" if self.role == "teacher" else "pending"),
             "avatar": self.avatar,
             "createdAt": self.createdAt
         }
@@ -241,6 +243,13 @@ def init_db():
     except Exception:
         pass
 
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE users ADD COLUMN status VARCHAR DEFAULT 'approved'"))
+            conn.commit()
+    except Exception:
+        pass
+
     seed_initial_data()
 
 def get_db():
@@ -304,6 +313,7 @@ def seed_initial_data():
                 school="Umumiy o'rta ta'lim maktabi",
                 phone="+998 90 000 00 00",
                 streakDays=1,
+                status="approved",
                 avatar="O",
                 createdAt=int(time.time() * 1000)
             )

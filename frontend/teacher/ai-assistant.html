@@ -9,6 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 5px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 8px; }
   </style>
 </head>
 <body class="bg-slate-50 text-slate-800 min-h-screen">
@@ -21,18 +23,106 @@
     <main class="flex-1 p-4 lg:p-8 overflow-y-auto">
       
       <!-- Page Header -->
-      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
           <div class="inline-flex items-center gap-2 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-semibold mb-1">
-            <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-purple-600"></i>
             Sun'iy Intellekt Metodisti
           </div>
           <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">AI Yordamchi</h1>
-          <p class="text-xs text-slate-500">Dars konspektlari, qiziqarli tajribalar va DTM testlarini bir zumda tuzing</p>
+          <p class="text-xs text-slate-500">Pedagogik maslahatlar, interaktiv savol-javob va dars materiallari generatori</p>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="flex items-center gap-1.5 p-1 bg-white border border-slate-200 rounded-2xl shadow-sm">
+          <button type="button" id="tab-chat-btn" onclick="switchAITab('chat')"
+            class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-purple-600 text-white shadow-sm cursor-pointer">
+            <i data-lucide="message-square" class="w-4 h-4"></i>
+            <span>AI Bilan Suhbat</span>
+          </button>
+          <button type="button" id="tab-gen-btn" onclick="switchAITab('generator')"
+            class="px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-purple-600 hover:bg-slate-50 cursor-pointer">
+            <i data-lucide="file-text" class="w-4 h-4"></i>
+            <span>Material Generator</span>
+          </button>
         </div>
       </div>
 
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      <!-- ======================================================== -->
+      <!-- SECTION 1: INTERACTIVE AI CHAT FOR TEACHER -->
+      <!-- ======================================================== -->
+      <div id="ai-chat-section" class="flex flex-col h-[calc(100vh-170px)] bg-white rounded-3xl border border-slate-200/80 shadow-sm overflow-hidden">
+        
+        <!-- Chat Header -->
+        <div class="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div class="flex items-center gap-3">
+            <div class="w-10 h-10 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-600 text-white flex items-center justify-center shadow-md shadow-purple-500/20">
+              <i data-lucide="bot" class="w-5 h-5"></i>
+            </div>
+            <div>
+              <h3 class="text-sm font-bold text-slate-800">Pedagogik AI Maslahatchi</h3>
+              <p class="text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                Faol &bull; Faqat o'qituvchilar uchun maxsus yordamchi
+              </p>
+            </div>
+          </div>
+
+          <button onclick="clearAIChat()" class="px-3 py-1.5 text-xs text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer">
+            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+            <span>Tozalash</span>
+          </button>
+        </div>
+
+        <!-- Messages Area -->
+        <div id="ai-chat-messages" class="flex-1 p-4 lg:p-6 overflow-y-auto space-y-4 custom-scroll bg-slate-50/30">
+          <!-- Welcome message -->
+          <div class="flex items-start gap-3 max-w-2xl">
+            <div class="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm">
+              AI
+            </div>
+            <div class="bg-white p-4 rounded-3xl rounded-tl-sm border border-slate-100 shadow-sm text-xs text-slate-700 leading-relaxed">
+              <p class="font-bold text-purple-900 mb-1">Assalomu alaykum, ustoz!</p>
+              Men biologiya va kimyo fanlari bo'yicha shaxsiy AI metodistingizman. Darsni qiziqarli o'tish, qiyin mavzularni tushuntirish metodlari, yangi pedagogik o'yinlar yoki savol-javoblar bo'yicha istalgan savolingizni bering!
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick Prompts Chips -->
+        <div class="px-4 py-2 border-t border-slate-100 bg-white flex items-center gap-2 overflow-x-auto custom-scroll">
+          <span class="text-[10px] uppercase font-bold text-slate-400 flex-shrink-0">Tavsiya:</span>
+          <button onclick="sendQuickPrompt('Fotosintez mavzusini 8-sinf o\'quvchilariga sodda va qiziqarli tushuntirish usuli')"
+            class="px-3 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-[11px] font-semibold whitespace-nowrap transition cursor-pointer">
+            💡 Fotosintezni sodda tushuntirish
+          </button>
+          <button onclick="sendQuickPrompt('Darsda o\'quvchilar e\'tiborini jalb qilish uchun 3 ta interaktiv metod tavsiya qiling')"
+            class="px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-full text-[11px] font-semibold whitespace-nowrap transition cursor-pointer">
+            ⚡ 3 ta interaktiv dars metodi
+          </button>
+          <button onclick="sendQuickPrompt('Genetika bo\'yicha Mendel qonunlariga oid qiziqarli masalalar tuzib bering')"
+            class="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-full text-[11px] font-semibold whitespace-nowrap transition cursor-pointer">
+            🧬 Qiziqarli genetika masalalari
+          </button>
+        </div>
+
+        <!-- Input Bar -->
+        <div class="p-3 lg:p-4 bg-white border-t border-slate-100">
+          <form id="ai-chat-form" class="flex items-center gap-2">
+            <input type="text" id="ai-chat-input" required placeholder="Ustoz savolingiz yoki pedagogik vazifani yozing..."
+              class="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-purple-500 focus:bg-white transition">
+            
+            <button type="submit" id="ai-chat-send-btn" class="p-3.5 bg-purple-600 hover:bg-purple-700 text-white rounded-2xl shadow-md shadow-purple-500/20 transition flex items-center justify-center flex-shrink-0 cursor-pointer">
+              <i data-lucide="send" class="w-4 h-4"></i>
+            </button>
+          </form>
+        </div>
+
+      </div>
+
+      <!-- ======================================================== -->
+      <!-- SECTION 2: LESSON PLAN & MATERIAL GENERATOR -->
+      <!-- ======================================================== -->
+      <div id="ai-generator-section" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
         
         <!-- Left Column: Generator Form -->
         <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm h-fit">
@@ -77,7 +167,7 @@
               </div>
             </div>
 
-            <button type="submit" id="generate-ai-btn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white font-bold rounded-xl text-xs transition shadow-md shadow-purple-500/20 flex items-center justify-center gap-2">
+            <button type="submit" id="generate-ai-btn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white font-bold rounded-xl text-xs transition shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 cursor-pointer">
               <i data-lucide="sparkles" class="w-4 h-4"></i>
               <span>Generatsiya qilish</span>
             </button>
@@ -95,10 +185,10 @@
                 <h3 class="text-sm font-bold text-slate-800">Tayyorlangan Material</h3>
               </div>
               <div class="flex items-center gap-2">
-                <button onclick="copyGeneratedText()" id="copy-btn" class="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition flex items-center gap-1.5">
+                <button onclick="copyGeneratedText()" id="copy-btn" class="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition flex items-center gap-1.5 cursor-pointer">
                   <i data-lucide="copy" class="w-3.5 h-3.5"></i> Nusxa olish
                 </button>
-                <button onclick="window.print()" class="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition flex items-center gap-1.5">
+                <button onclick="window.print()" class="px-3 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-100 rounded-xl border border-slate-200 transition flex items-center gap-1.5 cursor-pointer">
                   <i data-lucide="printer" class="w-3.5 h-3.5"></i> Chop etish
                 </button>
               </div>
@@ -122,6 +212,139 @@
     const currentUser = Auth.requireAuth("teacher");
     renderTeacherSidebar("AI Yordamchi");
 
+    // Tab Switching
+    window.switchAITab = function(tab) {
+      const chatSec = document.getElementById("ai-chat-section");
+      const genSec = document.getElementById("ai-generator-section");
+      const chatBtn = document.getElementById("tab-chat-btn");
+      const genBtn = document.getElementById("tab-gen-btn");
+
+      if (tab === "chat") {
+        chatSec.classList.remove("hidden");
+        genSec.classList.add("hidden");
+        chatBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-purple-600 text-white shadow-sm cursor-pointer";
+        genBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-purple-600 hover:bg-slate-50 cursor-pointer";
+      } else {
+        chatSec.classList.add("hidden");
+        genSec.classList.remove("hidden");
+        genBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 bg-purple-600 text-white shadow-sm cursor-pointer";
+        chatBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-slate-600 hover:text-purple-600 hover:bg-slate-50 cursor-pointer";
+      }
+      lucide.createIcons();
+    };
+
+    // -----------------------------------------------------------
+    // Interactive Chat Logic
+    // -----------------------------------------------------------
+    const chatContainer = document.getElementById("ai-chat-messages");
+    const chatForm = document.getElementById("ai-chat-form");
+    const chatInput = document.getElementById("ai-chat-input");
+    const chatSendBtn = document.getElementById("ai-chat-send-btn");
+
+    window.sendQuickPrompt = function(promptText) {
+      chatInput.value = promptText;
+      chatForm.dispatchEvent(new Event("submit"));
+    };
+
+    window.clearAIChat = function() {
+      chatContainer.innerHTML = `
+        <div class="flex items-start gap-3 max-w-2xl">
+          <div class="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm">
+            AI
+          </div>
+          <div class="bg-white p-4 rounded-3xl rounded-tl-sm border border-slate-100 shadow-sm text-xs text-slate-700 leading-relaxed">
+            <p class="font-bold text-purple-900 mb-1">Assalomu alaykum, ustoz!</p>
+            Suhbat tarixi tozalandi. Yangi savolingizni berishingiz mumkin.
+          </div>
+        </div>
+      `;
+      lucide.createIcons();
+    };
+
+    chatForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const message = chatInput.value.trim();
+      if (!message) return;
+
+      // Append Teacher Message
+      const userHtml = `
+        <div class="flex items-start justify-end gap-3 ml-auto max-w-2xl">
+          <div class="bg-purple-600 text-white p-4 rounded-3xl rounded-tr-sm shadow-sm text-xs leading-relaxed">
+            ${escapeHtml(message)}
+          </div>
+          <div class="w-9 h-9 rounded-xl bg-indigo-700 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm">
+            ${currentUser?.fullName?.[0] || 'U'}
+          </div>
+        </div>
+      `;
+      chatContainer.insertAdjacentHTML("beforeend", userHtml);
+      chatInput.value = "";
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      // Loading Indicator
+      const loadingId = "loading-" + Date.now();
+      const loadingHtml = `
+        <div id="${loadingId}" class="flex items-start gap-3 max-w-2xl">
+          <div class="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm">
+            AI
+          </div>
+          <div class="bg-white p-3.5 rounded-3xl rounded-tl-sm border border-slate-100 text-xs text-slate-400 italic flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-purple-600 animate-ping"></span>
+            AI javob tayyorlamoqda...
+          </div>
+        </div>
+      `;
+      chatContainer.insertAdjacentHTML("beforeend", loadingHtml);
+      chatContainer.scrollTop = chatContainer.scrollHeight;
+
+      try {
+        const res = await fetch("/api/teacher/ai-assistant", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "chat", message: message })
+        });
+        const data = await res.json();
+        
+        const loader = document.getElementById(loadingId);
+        if (loader) loader.remove();
+
+        const aiReply = data.result || data.reply || "Javob olinmadi.";
+        const aiHtml = `
+          <div class="flex items-start gap-3 max-w-2xl">
+            <div class="w-9 h-9 rounded-xl bg-purple-600 text-white flex items-center justify-center flex-shrink-0 text-xs font-bold shadow-sm">
+              AI
+            </div>
+            <div class="bg-white p-4 rounded-3xl rounded-tl-sm border border-slate-100 shadow-sm text-xs text-slate-800 leading-relaxed whitespace-pre-wrap">
+              ${escapeHtml(aiReply)}
+            </div>
+          </div>
+        `;
+        chatContainer.insertAdjacentHTML("beforeend", aiHtml);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+      } catch (err) {
+        const loader = document.getElementById(loadingId);
+        if (loader) loader.remove();
+
+        chatContainer.insertAdjacentHTML("beforeend", `
+          <div class="text-xs text-red-500 p-3 bg-red-50 rounded-xl border border-red-200">
+            Xatolik: ${err.message}
+          </div>
+        `);
+      }
+    });
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    // -----------------------------------------------------------
+    // Material Generator Logic
+    // -----------------------------------------------------------
     const form = document.getElementById("ai-assistant-form");
     const outputBox = document.getElementById("ai-output-box");
     const genBtn = document.getElementById("generate-ai-btn");

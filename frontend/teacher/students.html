@@ -43,7 +43,12 @@
           <input type="text" id="search-input" placeholder="O'quvchi ismi yoki familiyasi bo'yicha qidirish..."
             class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
         </div>
-        <select id="group-filter" class="w-full md:w-56 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+        <select id="status-filter" class="w-full md:w-48 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
+          <option value="all">Barcha holatlar</option>
+          <option value="pending">Kutilayotganlar (Pending)</option>
+          <option value="approved">Tasdiqlanganlar</option>
+        </select>
+        <select id="group-filter" class="w-full md:w-52 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
           <option value="all">Barcha sinflar</option>
         </select>
       </div>
@@ -58,12 +63,13 @@
                 <th class="py-4 px-4">Sinf / Guruh</th>
                 <th class="py-4 px-4">Email</th>
                 <th class="py-4 px-4">Telefon</th>
+                <th class="py-4 px-4 text-center">Holat</th>
                 <th class="py-4 px-4 text-center">Faollik</th>
                 <th class="py-4 px-6 text-right">Amallar</th>
               </tr>
             </thead>
             <tbody id="students-tbody" class="divide-y divide-slate-100">
-              <tr><td colspan="6" class="py-10 text-center text-slate-400">Yuklanmoqda...</td></tr>
+              <tr><td colspan="7" class="py-10 text-center text-slate-400">Yuklanmoqda...</td></tr>
             </tbody>
           </table>
         </div>
@@ -83,6 +89,8 @@
     const searchInput = document.getElementById("search-input");
     const groupFilter = document.getElementById("group-filter");
 
+    const statusFilter = document.getElementById("status-filter");
+
     async function loadStudents() {
       try {
         const [res, grpRes] = await Promise.all([
@@ -96,65 +104,102 @@
         }
         renderFilteredStudents();
       } catch (e) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-6 text-center text-red-500">Xatolik yuz berdi</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-6 text-center text-red-500">Xatolik yuz berdi</td></tr>`;
       }
     }
 
     function renderFilteredStudents() {
       const q = searchInput.value.toLowerCase().trim();
       const filterGroup = groupFilter.value;
+      const filterStatus = statusFilter.value;
 
       const filtered = allStudents.filter(s => {
         const matchName = (s.fullName || "").toLowerCase().includes(q) || (s.login || "").toLowerCase().includes(q);
         const matchGroup = filterGroup === "all" || (s.classGrade || "").includes(filterGroup);
-        return matchName && matchGroup;
+        const st = s.status || "approved";
+        const matchStatus = filterStatus === "all" || st === filterStatus;
+        return matchName && matchGroup && matchStatus;
       });
 
       if (filtered.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="py-12 text-center text-slate-400">Hech qanday o'quvchi topilmadi</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="py-12 text-center text-slate-400">Hech qanday o'quvchi topilmadi</td></tr>`;
         return;
       }
 
-      tbody.innerHTML = filtered.map(s => `
-        <tr class="hover:bg-slate-50/80 transition">
-          <td class="py-3.5 px-6">
-            <div class="flex items-center gap-3">
-              <div class="w-9 h-9 rounded-full bg-emerald-600 text-white font-bold flex items-center justify-center flex-shrink-0 text-xs">
-                ${s.avatar || s.fullName?.[0] || 'O'}
+      tbody.innerHTML = filtered.map(s => {
+        const isPending = s.status === "pending";
+        const statusBadge = isPending
+          ? `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-200">
+              <i data-lucide="clock" class="w-3 h-3 text-amber-600"></i> Kutilmoqda
+             </span>`
+          : `<span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <i data-lucide="check-circle" class="w-3 h-3 text-emerald-600"></i> Tasdiqlangan
+             </span>`;
+
+        return `
+          <tr class="hover:bg-slate-50/80 transition ${isPending ? 'bg-amber-50/20' : ''}">
+            <td class="py-3.5 px-6">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full ${isPending ? 'bg-amber-500' : 'bg-emerald-600'} text-white font-bold flex items-center justify-center flex-shrink-0 text-xs shadow-sm">
+                  ${s.avatar || s.fullName?.[0] || 'O'}
+                </div>
+                <div>
+                  <p class="font-bold text-slate-800">${s.fullName}</p>
+                  <p class="text-[10px] text-slate-400">@${s.login}</p>
+                </div>
               </div>
-              <div>
-                <p class="font-bold text-slate-800">${s.fullName}</p>
-                <p class="text-[10px] text-slate-400">@${s.login}</p>
+            </td>
+            <td class="py-3.5 px-4 font-semibold text-slate-700">${s.classGrade || 'Belgilanmagan'}</td>
+            <td class="py-3.5 px-4 text-slate-500 truncate max-w-[180px]">${s.email || 'Kiritilmagan'}</td>
+            <td class="py-3.5 px-4 text-slate-500">${s.phone || 'Mavjud emas'}</td>
+            <td class="py-3.5 px-4 text-center">${statusBadge}</td>
+            <td class="py-3.5 px-4 text-center">
+              <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
+                <i data-lucide="flame" class="w-3 h-3 text-amber-500"></i>
+                ${s.streakDays || 1} kun
+              </span>
+            </td>
+            <td class="py-3.5 px-6 text-right">
+              <div class="flex items-center justify-end gap-2">
+                ${isPending ? `
+                  <button onclick="approveStudent('${s.id}')" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1.5 cursor-pointer">
+                    <i data-lucide="check" class="w-3.5 h-3.5"></i>
+                    <span>Tasdiqlash</span>
+                  </button>
+                ` : ''}
+                <a href="/teacher/chat.html?studentId=${s.id}" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="Xabar yozish">
+                  <i data-lucide="message-circle" class="w-4 h-4"></i>
+                </a>
+                <button onclick="removeStudent('${s.id}')" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="O'chirish">
+                  <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
               </div>
-            </div>
-          </td>
-          <td class="py-3.5 px-4 font-semibold text-slate-700">${s.classGrade || 'Belgilanmagan'}</td>
-          <td class="py-3.5 px-4 text-slate-500 truncate max-w-[180px]">${s.email || 'Kiritilmagan'}</td>
-          <td class="py-3.5 px-4 text-slate-500">${s.phone || 'Mavjud emas'}</td>
-          <td class="py-3.5 px-4 text-center">
-            <span class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700">
-              <i data-lucide="flame" class="w-3 h-3 text-amber-500"></i>
-              ${s.streakDays || 1} kun
-            </span>
-          </td>
-          <td class="py-3.5 px-6 text-right">
-            <div class="flex items-center justify-end gap-2">
-              <a href="/teacher/chat.html?studentId=${s.id}" class="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition" title="Xabar yozish">
-                <i data-lucide="message-circle" class="w-4 h-4"></i>
-              </a>
-              <button onclick="removeStudent('${s.id}')" class="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition" title="O'chirish">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
-            </div>
-          </td>
-        </tr>
-      `).join("");
+            </td>
+          </tr>
+        `;
+      }).join("");
 
       lucide.createIcons();
     }
 
     searchInput.addEventListener("input", renderFilteredStudents);
     groupFilter.addEventListener("change", renderFilteredStudents);
+    statusFilter.addEventListener("change", renderFilteredStudents);
+
+    window.approveStudent = async function(id) {
+      try {
+        const res = await fetch(`/api/students/${id}/approve`, { method: "POST" });
+        if (!res.ok) throw new Error("Tasdiqlashda xatolik yuz berdi");
+        const data = await res.json();
+        
+        // Update in-memory array
+        const target = allStudents.find(s => s.id === id);
+        if (target) target.status = "approved";
+        renderFilteredStudents();
+      } catch (err) {
+        alert("Xatolik: " + err.message);
+      }
+    };
 
     window.removeStudent = async function(id) {
       if (!confirm("O'quvchini tizimdan o'chirmoqchimisiz?")) return;

@@ -20,6 +20,7 @@ from database import (
     UserModel, GroupModel, HomeworkModel,
     ChatMessageModel, SubmissionModel, TeacherTestModel
 )
+from email_service import notify_students_new_homework, notify_student_homework_graded
 
 # Load environment variables
 load_dotenv()
@@ -40,6 +41,54 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# -------------------------------------------------------------
+# Security & Access Control Middleware:
+# 1. Blocks STUDENTS from AI chat endpoints
+# 2. Blocks PENDING students from API usage until approved by teacher
+# -------------------------------------------------------------
+@app.middleware("http")
+async def enforce_auth_and_access_control(request: Request, call_next):
+    path = request.url.path
+
+    # Allow static assets and uploads
+    if path.startswith("/static") or path.startswith("/uploads") or path == "/favicon.ico":
+        return await call_next(request)
+
+    # Allow public auth endpoints
+    if path in ["/api/auth/login", "/api/auth/register", "/api/auth/me", "/api/upload"]:
+        return await call_next(request)
+
+    user_id = request.headers.get("X-User-Id")
+    user_role = request.headers.get("X-User-Role")
+
+    if user_id:
+        db = SessionLocal()
+        try:
+            user = db.query(UserModel).filter(UserModel.id == user_id).first()
+            if user:
+                # 1. Block AI Chat for Students on Backend
+                if user.role == "student":
+                    if path.startswith("/api/teacher/ai-assistant") or path.startswith("/api/tutor-chat"):
+                        return JSONResponse(
+                            status_code=403,
+                            content={"detail": "Talabalar uchun sun'iy intellekt xizmati mavjud emas. Ruxsat berilmagan."}
+                        )
+
+                # 2. Block Pending Students from all Action APIs
+                if user.role == "student" and user.status == "pending":
+                    if path.startswith("/api/"):
+                        return JSONResponse(
+                            status_code=403,
+                            content={
+                                "detail": "Your account has not been approved by a teacher yet. Please wait.",
+                                "status": "pending"
+                            }
+                        )
+        finally:
+            db.close()
+
+    return await call_next(request)
 
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -276,6 +325,13 @@ Qat'iy format (faqat JSON):
 
 @app.post("/api/tutor-chat")
 async def tutor_chat(request: Request):
+    user_role = request.headers.get("X-User-Role")
+    if user_role == "student":
+        raise HTTPException(
+            status_code=403,
+            detail="O'quvchilar uchun AI repetitor xizmati mavjud emas. Ruxsat berilmagan."
+        )
+
     body = await request.json()
     question = (body.get("question") or body.get("message") or body.get("text") or "").strip()
     if not question:
@@ -358,6 +414,7 @@ async def auth_register(request: Request):
             school=None,
             phone=phone,
             streakDays=1,
+            status="pending",  # Pending approval by teacher
             avatar=full_name[0].upper() if full_name else "O",
             createdAt=now
         )
@@ -368,11 +425,12 @@ async def auth_register(request: Request):
         db.close()
 
 @app.get("/api/auth/me")
-async def auth_me(userId: Optional[str] = None):
+async def auth_me(request: Request, userId: Optional[str] = None):
     db = SessionLocal()
     try:
-        if userId:
-            u = db.query(UserModel).filter(UserModel.id == userId).first()
+        target_id = userId or request.headers.get("X-User-Id")
+        if target_id:
+            u = db.query(UserModel).filter(UserModel.id == target_id).first()
             if u:
                 return {"user": u.to_dict()}
         first_user = db.query(UserModel).first()
@@ -434,6 +492,7 @@ async def create_group(request: Request):
             students = db.query(UserModel).filter(UserModel.id.in_(student_ids)).all()
             for s in students:
                 s.groupId = group_id
+                s.status = "approved"
 
         db.commit()
         data = new_group.to_dict()
@@ -648,6 +707,7 @@ async def add_student(request: Request):
             school=None,
             phone=body.get("phone", "+998 90 000 00 00"),
             streakDays=1,
+            status="approved",
             avatar=full_name[0].upper() if full_name else "O",
             createdAt=now
         )
@@ -659,6 +719,24 @@ async def add_student(request: Request):
 
         db.commit()
         return {"success": True, "student": new_student.to_dict()}
+    finally:
+        db.close()
+
+@app.post("/api/students/{student_id}/approve")
+async def approve_student(student_id: str, request: Request):
+    user_role = request.headers.get("X-User-Role")
+    if user_role == "student":
+        raise HTTPException(status_code=403, detail="Faqat o'qituvchilar o'quvchini tasdiqlashi mumkin.")
+
+    db = SessionLocal()
+    try:
+        stud = db.query(UserModel).filter(UserModel.id == student_id, UserModel.role == "student").first()
+        if not stud:
+            raise HTTPException(status_code=404, detail="O'quvchi topilmadi")
+
+        stud.status = "approved"
+        db.commit()
+        return {"success": True, "message": "O'quvchi muvaffaqiyatli tasdiqlandi", "student": stud.to_dict()}
     finally:
         db.close()
 
@@ -715,6 +793,33 @@ async def create_homework(request: Request):
         )
         db.add(new_hw)
         db.commit()
+
+        # Send asynchronous email notifications to students in the assigned group
+        try:
+            query = db.query(UserModel).filter(UserModel.role == "student")
+            if new_hw.groupId and new_hw.groupId != "all":
+                query = query.filter(
+                    (UserModel.groupId == new_hw.groupId) |
+                    (UserModel.classGrade == new_hw.groupName)
+                )
+            elif new_hw.groupName and new_hw.groupName not in ["Barcha guruhlar", "Umumiy sinf"]:
+                query = query.filter(UserModel.classGrade == new_hw.groupName)
+
+            target_students = query.all()
+            notify_students_new_homework(
+                students=target_students,
+                teacher_name=new_hw.teacherName or "O'qituvchi",
+                subject=new_hw.subject or "Biologiya",
+                hw_title=new_hw.title,
+                description=new_hw.description or "",
+                deadline=new_hw.deadline or "",
+                file_url=new_hw.fileUrl,
+                file_name=new_hw.fileName,
+                upload_dir=UPLOAD_DIR
+            )
+        except Exception as mail_err:
+            print(f"[Email Notification Error - create_homework]: {mail_err}")
+
         return {"success": True, "homework": new_hw.to_dict()}
     finally:
         db.close()
@@ -802,6 +907,28 @@ async def grade_homework(hw_id: str, request: Request):
         hw.submissions = subs
         flag_modified(hw, "submissions")
         db.commit()
+
+        # Send asynchronous email notification to the graded student
+        try:
+            student = db.query(UserModel).filter(UserModel.id == student_id).first()
+            if not student and student_name:
+                student = db.query(UserModel).filter(UserModel.fullName == student_name, UserModel.role == "student").first()
+
+            if student:
+                notify_student_homework_graded(
+                    student=student,
+                    teacher_name=hw.teacherName or "O'qituvchi",
+                    subject=hw.subject or "Biologiya",
+                    hw_title=hw.title,
+                    grade=grade or "Baholandi",
+                    feedback=feedback or "",
+                    file_url=teacher_file_url or hw.fileUrl,
+                    file_name=teacher_file_name or hw.fileName,
+                    upload_dir=UPLOAD_DIR
+                )
+        except Exception as mail_err:
+            print(f"[Email Notification Error - grade_homework]: {mail_err}")
+
         return {"success": True, "message": "Baho va taqriz saqlandi"}
     finally:
         db.close()
@@ -896,19 +1023,7 @@ async def get_chat_messages(channel: Optional[str] = None, channelId: Optional[s
         msg_list = [m.to_dict() for m in messages]
 
         if not msg_list:
-            if ch == "ai":
-                msg_list = [{
-                    "id": "starter-ai",
-                    "channel": "ai",
-                    "channelId": "ai",
-                    "senderId": "ai-tutor",
-                    "senderName": "AI Repititor",
-                    "senderRole": "ai",
-                    "text": "Assalomu alaykum! Men biologiya fanidan sun'iy intellekt repetitoringizman. Hujayra, DNK, fotosintez, odam anatomiyasi yoki istalgan mavzuda savollaringizni bering!",
-                    "time": "Hozir",
-                    "timeStr": "Hozir"
-                }]
-            elif ch == "group":
+            if ch == "group":
                 msg_list = [{
                     "id": "starter-group",
                     "channel": "group",
@@ -931,9 +1046,15 @@ async def send_chat_message(request: Request):
     if not text:
         raise HTTPException(status_code=400, detail="Xabar matni bo'sh bo'lishi mumkin emas")
 
+    ch = body.get("channel") or body.get("channelId") or "teacher"
+    if ch == "ai":
+        raise HTTPException(
+            status_code=403,
+            detail="AI suhbati oddiy chat bo'limida mavjud emas. O'qituvchilar uchun alohida 'AI Yordamchi' sahifasi ajratilgan, o'quvchilar uchun esa AI funksiyasi yopiq."
+        )
+
     now = int(time.time() * 1000)
     time_str = time.strftime("%H:%M")
-    ch = body.get("channel") or body.get("channelId") or "teacher"
 
     db = SessionLocal()
     try:
@@ -950,23 +1071,6 @@ async def send_chat_message(request: Request):
             timeStr=time_str
         )
         db.add(new_msg)
-
-        if ch == "ai":
-            ai_answer = await generate_biotutor_answer(text)
-            ai_msg = ChatMessageModel(
-                id=f"msg-{now+1}-{random.randint(100, 999)}",
-                channel="ai",
-                channelId="ai",
-                senderId="ai-tutor",
-                senderName="AI Repititor",
-                senderRole="ai",
-                text=ai_answer,
-                timestamp=now + 1,
-                time=time_str,
-                timeStr=time_str
-            )
-            db.add(ai_msg)
-
         db.commit()
         return {"success": True, "message": new_msg.to_dict()}
     finally:
@@ -1113,11 +1217,44 @@ async def delete_teacher_test(test_id: str):
 # -------------------------------------------------------------
 @app.post("/api/teacher/ai-assistant")
 async def teacher_ai_assistant(request: Request):
+    user_role = request.headers.get("X-User-Role")
+    if user_role == "student":
+        raise HTTPException(
+            status_code=403,
+            detail="Talabalar uchun sun'iy intellekt xizmati mavjud emas. Ruxsat berilmagan."
+        )
+
     body = await request.json()
     task_type = body.get("type", "lesson_plan")
-    topic = body.get("topic") or "Fotosintez va Hujayra almashinuvi"
+    topic = body.get("topic") or body.get("message") or body.get("prompt") or "Fotosintez va Hujayra almashinuvi"
     subject = body.get("subject") or "Biologiya"
     grade = body.get("grade") or "8-sinf"
+
+    # Support interactive conversational chat for teacher
+    if task_type == "chat":
+        user_message = (body.get("message") or body.get("prompt") or topic or "").strip()
+        if not user_message:
+            raise HTTPException(status_code=400, detail="Xabar matni bo'sh bo'lishi mumkin emas")
+
+        if API_KEY:
+            prompt = f"""Siz O'zbekiston milliy maktablari uchun tajribali biologiya va kimyo fani metodisti, katta pedagog-maslahatchisiz.
+Siz faqat O'QITUVCHILARGA dars o'tish metodikasi, qiyin mavzularni o'quvchilarga sodda tushuntirish usullari, zamonaviy interaktiv mashg'ulotlar, laboratoriya ishlari va pedagogik masalalar bo'yicha yordam berasiz.
+Ustoz savoli:
+"{user_message}"
+
+Iltimos, ustozga professional, amaliy va aniq javob bering."""
+            try:
+                reply = await call_gemini_api(prompt)
+                if reply:
+                    return {"result": reply, "reply": reply}
+            except Exception as e:
+                print(f"Teacher AI chat error: {e}")
+
+        # Fallback chat response
+        return {
+            "result": f"Hurmatli ustoz! \"{user_message}\" bo'yicha tavsiya: O'quvchilar bilan mavzuni vizual animatsiyalar, muammoli vaziyatlar va kichik guruhlarda muhokama qilish orqali o'rganish dars samaradorligini sezilarli darajada oshiradi.",
+            "reply": f"Hurmatli ustoz! \"{user_message}\" bo'yicha tavsiya: O'quvchilar bilan mavzuni vizual animatsiyalar, muammoli vaziyatlar va kichik guruhlarda muhokama qilish orqali o'rganish dars samaradorligini sezilarli darajada oshiradi."
+        }
 
     if API_KEY:
         prompt = f"""Siz tajribali O'zbekiston milliy maktabi pedagogi, biologiya metodistisiz.
@@ -1130,7 +1267,7 @@ Iltimos, o'qituvchi darsda bevosita qo'llashi mumkin bo'lgan professional, pedag
         try:
             reply = await call_gemini_api(prompt)
             if reply:
-                return {"result": reply}
+                return {"result": reply, "reply": reply}
         except Exception as e:
             print(f"Teacher AI error: {e}")
 
@@ -1243,9 +1380,14 @@ if FRONTEND_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(FRONTEND_DIR)), name="static")
 
 @app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
+async def serve_spa(full_path: str, request: Request):
     if full_path.startswith("api/"):
         raise HTTPException(status_code=404, detail="API yo'nalishi topilmadi")
+
+    # Block students from accessing teacher pages or AI assistant directly
+    user_role = request.headers.get("X-User-Role")
+    if user_role == "student" and ("teacher" in full_path or "ai-assistant" in full_path):
+        raise HTTPException(status_code=403, detail="Talabalar uchun o'qituvchi va AI sahifalariga kirish taqiqlangan.")
 
     requested_file = FRONTEND_DIR / full_path
     if full_path and requested_file.is_file():
