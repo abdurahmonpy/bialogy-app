@@ -96,6 +96,8 @@ class HomeworkModel(Base):
     deadline = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     teacherName = Column(String, nullable=True)
+    fileUrl = Column(String, nullable=True)
+    fileName = Column(String, nullable=True)
     createdAt = Column(BigInteger, default=lambda: int(time.time() * 1000))
     submissions = Column(JSON, default=list)
 
@@ -109,6 +111,8 @@ class HomeworkModel(Base):
             "deadline": self.deadline,
             "description": self.description,
             "teacherName": self.teacherName,
+            "fileUrl": self.fileUrl,
+            "fileName": self.fileName,
             "createdAt": self.createdAt,
             "submissions": self.submissions or []
         }
@@ -222,6 +226,21 @@ def init_db():
             conn.commit()
     except Exception:
         pass
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE homework ADD COLUMN fileUrl VARCHAR"))
+            conn.commit()
+    except Exception:
+        pass
+
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE homework ADD COLUMN fileName VARCHAR"))
+            conn.commit()
+    except Exception:
+        pass
+
     seed_initial_data()
 
 def get_db():

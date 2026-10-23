@@ -5,12 +5,14 @@ import random
 import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional
+import copy
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from sqlalchemy.orm.attributes import flag_modified
 
 from database import clean_demo_records
 from database import (
@@ -38,6 +40,36 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+UPLOAD_DIR = BASE_DIR / "uploads"
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    if not file or not file.filename:
+        raise HTTPException(status_code=400, detail="Fayl tanlanmadi")
+
+    now = int(time.time() * 1000)
+    clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
+    saved_filename = f"{now}_{clean_name}"
+    file_path = UPLOAD_DIR / saved_filename
+
+    try:
+        content = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(content)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Faylni saqlashda xatolik: {e}")
+
+    return {
+        "success": True,
+        "url": f"/uploads/{saved_filename}",
+        "fileUrl": f"/uploads/{saved_filename}",
+        "filename": file.filename,
+        "fileName": file.filename,
+        "size": len(content)
+    }
 
 @app.on_event("startup")
 def on_startup():
@@ -513,7 +545,7 @@ async def get_student_statistics(student_id: str):
         hw_submitted_cnt = 0
         for hw in hws:
             s_list = hw.submissions or []
-            my_sub = next((sub for sub in s_list if sub.get("studentId") == student.id), None)
+            my_sub = next((sub for sub in s_list if (str(sub.get("studentId")) == str(student.id)) or (sub.get("studentName") and sub.get("studentName") == student.fullName)), None)
             if my_sub:
                 hw_submitted_cnt += 1
                 hw_details.append({
@@ -523,7 +555,9 @@ async def get_student_statistics(student_id: str):
                     "status": "submitted",
                     "submittedAt": my_sub.get("submittedAt"),
                     "grade": my_sub.get("grade"),
-                    "feedback": my_sub.get("feedback") or my_sub.get("teacherFeedback")
+                    "feedback": my_sub.get("feedback") or my_sub.get("teacherFeedback"),
+                    "fileUrl": my_sub.get("fileUrl"),
+                    "fileName": my_sub.get("fileName")
                 })
             else:
                 hw_details.append({
@@ -674,6 +708,8 @@ async def create_homework(request: Request):
             deadline=body.get("deadline") or "30.10.2026",
             description=body.get("description", ""),
             teacherName=body.get("teacherName") or "Aziza Rahimova",
+            fileUrl=body.get("fileUrl"),
+            fileName=body.get("fileName"),
             createdAt=now,
             submissions=[]
         )
@@ -687,11 +723,13 @@ async def create_homework(request: Request):
 async def submit_homework(hw_id: str, request: Request):
     body = await request.json()
     text = (body.get("text") or body.get("content") or "").strip()
+    file_url = body.get("fileUrl")
+    file_name = body.get("fileName")
     student_name = body.get("studentName", "O'quvchi")
-    student_id = body.get("studentId", "user-stud-1")
+    student_id = str(body.get("studentId") or "user-stud-1")
 
-    if not text:
-        raise HTTPException(status_code=400, detail="Javob matni bo'sh bo'lishi mumkin emas")
+    if not text and not file_url:
+        raise HTTPException(status_code=400, detail="Javob matni yoki biriktirilgan fayl kiritilishi shart")
 
     db = SessionLocal()
     try:
@@ -699,12 +737,15 @@ async def submit_homework(hw_id: str, request: Request):
         if not hw:
             raise HTTPException(status_code=404, detail="Vazifa topilmadi")
 
-        subs = list(hw.submissions or [])
+        subs = copy.deepcopy(hw.submissions or [])
         now_str = time.strftime("%d.%m.%Y, %H:%M")
-        existing = next((s for s in subs if s.get("studentId") == student_id), None)
+        existing = next((s for s in subs if str(s.get("studentId")) == student_id), None)
         if existing:
             existing["text"] = text
             existing["content"] = text
+            if file_url:
+                existing["fileUrl"] = file_url
+                existing["fileName"] = file_name
             existing["submittedAt"] = now_str
         else:
             subs.append({
@@ -712,6 +753,8 @@ async def submit_homework(hw_id: str, request: Request):
                 "studentName": student_name,
                 "text": text,
                 "content": text,
+                "fileUrl": file_url,
+                "fileName": file_name,
                 "submittedAt": now_str,
                 "grade": None,
                 "feedback": None,
@@ -719,6 +762,7 @@ async def submit_homework(hw_id: str, request: Request):
             })
 
         hw.submissions = subs
+        flag_modified(hw, "submissions")
         db.commit()
         return {"success": True, "message": "Vazifa muvaffaqiyatli topshirildi"}
     finally:
@@ -727,9 +771,12 @@ async def submit_homework(hw_id: str, request: Request):
 @app.post("/api/homework/{hw_id}/grade")
 async def grade_homework(hw_id: str, request: Request):
     body = await request.json()
-    student_id = body.get("studentId")
+    student_id = str(body.get("studentId") or "")
+    student_name = body.get("studentName")
     grade = body.get("grade")
     feedback = (body.get("feedback") or body.get("teacherFeedback") or "").strip()
+    teacher_file_url = body.get("teacherFileUrl")
+    teacher_file_name = body.get("teacherFileName")
 
     db = SessionLocal()
     try:
@@ -737,16 +784,23 @@ async def grade_homework(hw_id: str, request: Request):
         if not hw:
             raise HTTPException(status_code=404, detail="Vazifa topilmadi")
 
-        subs = list(hw.submissions or [])
-        sub = next((s for s in subs if s.get("studentId") == student_id), None)
+        subs = copy.deepcopy(hw.submissions or [])
+        sub = next((s for s in subs if str(s.get("studentId")) == student_id), None)
+        if not sub and student_name:
+            sub = next((s for s in subs if s.get("studentName") == student_name), None)
+
         if not sub:
             raise HTTPException(status_code=404, detail="O'quvchi topshirig'i topilmadi")
 
         sub["grade"] = grade
         sub["feedback"] = feedback
         sub["teacherFeedback"] = feedback
+        if teacher_file_url:
+            sub["teacherFileUrl"] = teacher_file_url
+            sub["teacherFileName"] = teacher_file_name
 
         hw.submissions = subs
+        flag_modified(hw, "submissions")
         db.commit()
         return {"success": True, "message": "Baho va taqriz saqlandi"}
     finally:

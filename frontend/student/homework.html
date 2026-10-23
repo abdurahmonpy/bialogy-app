@@ -57,9 +57,19 @@
         <input type="hidden" id="modal-hw-id">
 
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Javobingiz yoki tushuntirishingiz</label>
-          <textarea id="modal-answer-text" rows="5" required placeholder="Topshiriq yechimi, savollarga yozgan javoblaringizni batafsil bayon qiling..."
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Javobingiz yoki izoh</label>
+          <textarea id="modal-answer-text" rows="4" placeholder="Topshiriq yechimi, savollarga javoblaringiz yoki faylga qo'shimcha izoh..."
             class="w-full p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:bg-white transition"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Fayl biriktirish (Ixtiyoriy)</label>
+          <label class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 hover:border-emerald-500 rounded-2xl cursor-pointer bg-slate-50 transition group text-center">
+            <i data-lucide="upload-cloud" class="w-6 h-6 text-slate-400 group-hover:text-emerald-600 mb-1 transition"></i>
+            <span id="modal-file-label" class="text-xs text-slate-600 font-semibold group-hover:text-emerald-700">Fayl tanlang (Rasm, PDF, Word, DOCX)</span>
+            <span class="text-[10px] text-slate-400 mt-0.5">Maksimal hajm: 50MB</span>
+            <input type="file" id="modal-answer-file" class="hidden">
+          </label>
         </div>
 
         <div class="p-3 bg-amber-50 rounded-2xl border border-amber-200 text-amber-800 text-xs flex items-center gap-2">
@@ -89,8 +99,21 @@
     const modalHwTitle = document.getElementById("modal-hw-title");
     const modalHwSubject = document.getElementById("modal-hw-subject");
     const modalAnswerText = document.getElementById("modal-answer-text");
+    const modalAnswerFile = document.getElementById("modal-answer-file");
+    const modalFileLabel = document.getElementById("modal-file-label");
+    const submitHwBtn = document.getElementById("submit-hw-btn");
 
     closeModalBtn.addEventListener("click", () => submissionModal.classList.add("hidden"));
+
+    modalAnswerFile.addEventListener("change", () => {
+      if (modalAnswerFile.files.length > 0) {
+        modalFileLabel.textContent = "Tanlandi: " + modalAnswerFile.files[0].name;
+        modalFileLabel.classList.add("text-emerald-700");
+      } else {
+        modalFileLabel.textContent = "Fayl tanlang (Rasm, PDF, Word, DOCX)";
+        modalFileLabel.classList.remove("text-emerald-700");
+      }
+    });
 
     async function loadHomework() {
       try {
@@ -110,7 +133,10 @@
         }
 
         homeworkGrid.innerHTML = list.map(hw => {
-          const submission = hw.submissions ? hw.submissions.find(s => s.studentId === currentUser?.id) : null;
+          const submission = hw.submissions ? hw.submissions.find(s => 
+            (s.studentId && currentUser?.id && String(s.studentId) === String(currentUser.id)) ||
+            (s.studentName && currentUser?.fullName && s.studentName.trim().toLowerCase() === currentUser.fullName.trim().toLowerCase())
+          ) : null;
           
           let statusBadge = "";
           let actionBtn = "";
@@ -151,7 +177,7 @@
               <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4 pb-4 border-b border-slate-100">
                 <div>
                   <div class="flex items-center gap-2 mb-1.5">
-                    <span class="px-2.5 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md">${hw.groupName || '8-A sinf'}</span>
+                    <span class="px-2.5 py-0.5 bg-slate-100 text-slate-700 text-[11px] font-semibold rounded-md">${hw.groupName || 'Barcha guruhlar'}</span>
                     <span class="text-xs text-slate-400">&bull; Muddati: ${hw.deadline || 'Cheklovlarsiz'}</span>
                   </div>
                   <h3 class="text-base font-bold text-slate-800">${hw.title}</h3>
@@ -166,16 +192,51 @@
                 ${hw.description || 'Topshiriq tafsilotlari mavjud emas'}
               </div>
 
-              ${submission ? `
-                <div class="mt-4 pt-4 border-t border-slate-100 space-y-2">
-                  <div class="p-3 bg-emerald-50/60 rounded-xl border border-emerald-100 text-xs">
-                    <span class="font-bold text-emerald-900 block mb-0.5">Siz yuborgan javob:</span>
-                    <p class="text-emerald-800 whitespace-pre-line">${submission.text}</p>
+              ${hw.fileUrl ? `
+                <div class="mb-4 flex items-center justify-between p-3.5 bg-indigo-50/70 border border-indigo-100 rounded-2xl">
+                  <div class="flex items-center gap-3 truncate pr-2">
+                    <div class="w-9 h-9 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0">
+                      <i data-lucide="file-text" class="w-4 h-4"></i>
+                    </div>
+                    <div class="truncate">
+                      <p class="text-xs font-bold text-slate-800 truncate">${hw.fileName || 'Ustoz biriktirgan vazifa fayli'}</p>
+                      <p class="text-[10px] text-indigo-600 font-semibold">Biriktirilgan fayl / topshiriq</p>
+                    </div>
                   </div>
+                  <a href="${hw.fileUrl}" target="_blank" download class="px-3.5 py-1.5 bg-white hover:bg-indigo-600 hover:text-white text-indigo-600 font-bold rounded-xl border border-indigo-200 transition shadow-sm text-xs flex items-center gap-1.5 flex-shrink-0">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                    <span>Yuklab olish</span>
+                  </a>
+                </div>
+              ` : ''}
+
+              ${submission ? `
+                <div class="mt-4 pt-4 border-t border-slate-100 space-y-2.5">
+                  <div class="p-3.5 bg-emerald-50/60 rounded-2xl border border-emerald-100 text-xs">
+                    <span class="font-bold text-emerald-900 block mb-1">Siz yuborgan javob:</span>
+                    <p class="text-emerald-800 whitespace-pre-line">${submission.text || '(Fayl biriktirilgan)'}</p>
+                    
+                    ${submission.fileUrl ? `
+                      <div class="mt-2.5 flex items-center justify-between p-2.5 bg-white rounded-xl border border-emerald-200">
+                        <div class="flex items-center gap-2 truncate">
+                          <i data-lucide="paperclip" class="w-4 h-4 text-emerald-600 flex-shrink-0"></i>
+                          <span class="text-xs font-medium text-slate-700 truncate">${submission.fileName || 'Javob fayli'}</span>
+                        </div>
+                        <a href="${submission.fileUrl}" target="_blank" download class="px-2.5 py-1 text-xs font-bold text-emerald-700 hover:bg-emerald-50 rounded-lg transition flex items-center gap-1">
+                          <i data-lucide="download" class="w-3.5 h-3.5"></i>
+                          <span>Ochish</span>
+                        </a>
+                      </div>
+                    ` : ''}
+                  </div>
+
                   ${submission.feedback ? `
-                    <div class="p-3 bg-indigo-50 rounded-xl border border-indigo-100 text-xs">
-                      <span class="font-bold text-indigo-900 block mb-0.5">Ustoz taqrizi:</span>
-                      <p class="text-indigo-800">${submission.feedback}</p>
+                    <div class="p-3.5 bg-indigo-50 rounded-2xl border border-indigo-100 text-xs">
+                      <div class="flex items-center justify-between mb-1">
+                        <span class="font-bold text-indigo-900">Ustoz taqrizi va bahosi:</span>
+                        <span class="px-2.5 py-0.5 bg-indigo-600 text-white font-extrabold rounded-md text-[11px]">${submission.grade || 'Baholangan'}</span>
+                      </div>
+                      <p class="text-indigo-800 leading-relaxed">${submission.feedback}</p>
                     </div>
                   ` : ''}
                 </div>
@@ -194,6 +255,9 @@
       modalHwId.value = hwId;
       modalHwTitle.textContent = decodeURIComponent(encodedTitle);
       modalAnswerText.value = "";
+      modalAnswerFile.value = "";
+      modalFileLabel.textContent = "Fayl tanlang (Rasm, PDF, Word, DOCX)";
+      modalFileLabel.classList.remove("text-emerald-700");
       submissionModal.classList.remove("hidden");
     };
 
@@ -201,25 +265,58 @@
       e.preventDefault();
       const hwId = modalHwId.value;
       const text = modalAnswerText.value.trim();
-      if (!text) return;
+      const hasFile = modalAnswerFile.files.length > 0;
+
+      if (!text && !hasFile) {
+        alert("Iltimos, javob matnini yozing yoki fayl biriktiring!");
+        return;
+      }
+
+      submitHwBtn.disabled = true;
+      submitHwBtn.innerHTML = `<span>Yuklanmoqda...</span>`;
 
       try {
+        let fileUrl = null;
+        let fileName = null;
+
+        if (hasFile) {
+          const file = modalAnswerFile.files[0];
+          const formData = new FormData();
+          formData.append("file", file);
+
+          const upRes = await fetch("/api/upload", {
+            method: "POST",
+            body: formData
+          });
+
+          if (!upRes.ok) throw new Error("Faylni yuklashda xatolik yuz berdi");
+          const upData = await upRes.json();
+          fileUrl = upData.fileUrl;
+          fileName = upData.fileName;
+        }
+
         const res = await fetch(`/api/homework/${hwId}/submit`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             studentId: currentUser.id,
             studentName: currentUser.fullName,
-            text: text
+            text: text,
+            fileUrl: fileUrl,
+            fileName: fileName
           })
         });
 
-        if (!res.ok) throw new Error("Topshirishda xatolik");
+        if (!res.ok) throw new Error("Topshiriqni yuborishda xatolik");
 
         submissionModal.classList.add("hidden");
         loadHomework();
       } catch (err) {
         alert("Xatolik: " + err.message);
+      } finally {
+        submitHwBtn.disabled = false;
+        submitHwBtn.innerHTML = `<span>Topshirish</span><i data-lucide="send" class="w-3.5 h-3.5"></i>`;
+        lucide.createIcons();
       }
     });
 
