@@ -217,6 +217,42 @@ class TeacherTestModel(Base):
             "levels": self.levels or []
         }
 
+class ResourceModel(Base):
+    __tablename__ = "resources"
+
+    id = Column(String, primary_key=True, index=True)
+    title = Column(String, nullable=False)
+    subject = Column(String, default="Biologiya")
+    classGrade = Column(String, nullable=True) # "5-sinf", "6-sinf", ..., "Abituriyent", "Barchasi"
+    category = Column(String, default="Darslik") # "Darslik", "Metodik qo'llanma", "Atlas", "Laboratoriya", "Test to'plami"
+    author = Column(String, nullable=True)
+    year = Column(String, nullable=True)
+    description = Column(Text, nullable=True)
+    fileUrl = Column(String, nullable=False)
+    fileName = Column(String, nullable=True)
+    fileSize = Column(String, nullable=True)
+    coverColor = Column(String, default="emerald")
+    downloads = Column(Integer, default=0)
+    createdAt = Column(BigInteger, default=lambda: int(time.time() * 1000))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "title": self.title,
+            "subject": self.subject or "Biologiya",
+            "classGrade": self.classGrade or "Barchasi",
+            "category": self.category or "Darslik",
+            "author": self.author or "",
+            "year": self.year or "",
+            "description": self.description or "",
+            "fileUrl": self.fileUrl,
+            "fileName": self.fileName or "fayl.pdf",
+            "fileSize": self.fileSize or "10 MB",
+            "coverColor": self.coverColor or "emerald",
+            "downloads": self.downloads or 0,
+            "createdAt": self.createdAt
+        }
+
 # -------------------------------------------------------------
 # Database Init & Seeding
 # -------------------------------------------------------------
@@ -292,6 +328,104 @@ def clean_demo_records(db: Session):
     except Exception as e:
         db.rollback()
         print(f"Error cleaning demo records: {e}")
+
+def _generate_sample_pdf_if_missing(file_path: str, title: str, author: str, grade: str, desc: str):
+    """Generate a valid, styled educational PDF for the seeded resource if not already existing."""
+    try:
+        if os.path.exists(file_path):
+            return
+        os.makedirs(os.path.dirname(file_path), exist_ok=True)
+        from reportlab.lib.pagesizes import letter
+        from reportlab.pdfgen import canvas
+        from reportlab.lib import colors
+
+        c = canvas.Canvas(file_path, pagesize=letter)
+        width, height = letter
+
+        # Header background banner
+        c.setFillColor(colors.HexColor("#047857"))  # emerald-700
+        c.rect(0, height - 130, width, 130, fill=1, stroke=0)
+
+        # Header text
+        c.setFillColor(colors.white)
+        c.setFont("Helvetica-Bold", 20)
+        c.drawString(45, height - 55, "BioEdu Ta'lim Platformasi")
+        c.setFont("Helvetica", 12)
+        c.drawString(45, height - 80, "Elektron Darsliklar va O'quv-Metodik Resurslar Markazi")
+        c.setFont("Helvetica-Oblique", 10)
+        c.drawString(45, height - 102, f"Raqamlashtirilgan ta'limiy nashr | {grade}")
+
+        # Book Title
+        c.setFillColor(colors.HexColor("#0f172a"))
+        c.setFont("Helvetica-Bold", 16)
+        c.drawString(45, height - 170, title)
+
+        # Author and Meta info
+        c.setFillColor(colors.HexColor("#475569"))
+        c.setFont("Helvetica", 11)
+        c.drawString(45, height - 195, f"Muallif(lar): {author}  |  Sinf / Bosqich: {grade}")
+
+        # Horizontal separator
+        c.setStrokeColor(colors.HexColor("#cbd5e1"))
+        c.setLineWidth(1.5)
+        c.line(45, height - 215, width - 45, height - 215)
+
+        # Overview Header
+        c.setFillColor(colors.HexColor("#1e293b"))
+        c.setFont("Helvetica-Bold", 13)
+        c.drawString(45, height - 245, "Resurs haqida qisqacha ma'lumot va mundarija:")
+
+        # Summary box
+        c.setFillColor(colors.HexColor("#f8fafc"))
+        c.setStrokeColor(colors.HexColor("#e2e8f0"))
+        c.roundRect(45, height - 370, width - 90, 110, 8, fill=1, stroke=1)
+
+        c.setFillColor(colors.HexColor("#334155"))
+        c.setFont("Helvetica", 10)
+        c.drawString(60, height - 275, f"Tavsif: {desc[:90]}...")
+        if len(desc) > 90:
+            c.drawString(60, height - 295, f"{desc[90:185]}...")
+
+        c.drawString(60, height - 325, "Ushbu elektron darslik umumiy o'rta va ixtisoslashtirilgan ta'lim talablari asosida")
+        c.drawString(60, height - 345, "o'quvchilar hamda pedagoglar foydalanishi uchun tayyorlangan.")
+
+        # Chapters listing
+        c.setFillColor(colors.HexColor("#0f172a"))
+        c.setFont("Helvetica-Bold", 12)
+        c.drawString(45, height - 405, "Asosiy boblar va mavzular:")
+
+        c.setFont("Helvetica", 10)
+        c.setFillColor(colors.HexColor("#334155"))
+        chapters = [
+            "1-bob. Kirish: fanning predmeti, vazifalari va ilmiy metodlari",
+            "2-bob. Biologik tizimlar, ularning o'ziga xos tuzilishi va qonuniyatlari",
+            "3-bob. Moddalar va energiya almashinuvi jarayonlari",
+            "4-bob. Hayot faoliyatining boshqarilishi va muhitga moslashuv",
+            "5-bob. Laboratoriya va amaliy tajriba mashg'ulotlari",
+            "6-bob. O'zlashtirishni tekshirish uchun test va mantiqiy savollar"
+        ]
+        curr_y = height - 430
+        for ch in chapters:
+            c.drawString(55, curr_y, f"•  {ch}")
+            curr_y -= 22
+
+        # Note at bottom
+        c.setFillColor(colors.HexColor("#f1f5f9"))
+        c.setStrokeColor(colors.HexColor("#cbd5e1"))
+        c.roundRect(45, 90, width - 90, 50, 6, fill=1, stroke=1)
+        c.setFillColor(colors.HexColor("#475569"))
+        c.setFont("Helvetica-Oblique", 9)
+        c.drawString(60, 120, "Eslatma: Ushbu darslik BioEdu platformasi foydalanuvchilari uchun onlayn mutolaa")
+        c.drawString(60, 104, "va yuklab olish imkoniyati bilan bepul taqdim etiladi.")
+
+        # Footer
+        c.setFillColor(colors.HexColor("#94a3b8"))
+        c.setFont("Helvetica", 9)
+        c.drawString(45, 45, "© BioEdu Online Education System. Barcha huquqlar himoyalangan.")
+
+        c.save()
+    except Exception as e:
+        print(f"Error generating sample PDF for {title}: {e}")
 
 def seed_initial_data():
     db = SessionLocal()
@@ -407,6 +541,213 @@ def seed_initial_data():
                 )
             ]
             db.add_all(initial_tests)
+
+        # 3. Seed Standard Textbooks & Educational Resources if empty
+        if db.query(ResourceModel).count() == 0:
+            res_dir = os.path.join(os.path.dirname(__file__), "uploads", "resources")
+            os.makedirs(res_dir, exist_ok=True)
+
+            sample_resources = [
+                {
+                    "id": "res-bio-5",
+                    "title": "Biologiya (Tabiiy fanlar) - 5-sinf darsligi",
+                    "subject": "Biologiya",
+                    "classGrade": "5-sinf",
+                    "category": "Darslik",
+                    "author": "A. Bahromov, Sh. Sharipov",
+                    "year": "2022",
+                    "description": "Umumiy o'rta ta'lim maktablarining 5-sinfi uchun tabiiy fanlar, tirik tabiat asoslari va organizmlar xilma-xilligi darsligi.",
+                    "fileName": "Biologiya_5_sinf.pdf",
+                    "fileSize": "12.4 MB",
+                    "coverColor": "emerald",
+                    "downloads": 142
+                },
+                {
+                    "id": "res-bio-6",
+                    "title": "Botanika: O'simliklar dunyosi - 6-sinf darsligi",
+                    "subject": "Biologiya",
+                    "classGrade": "6-sinf",
+                    "category": "Darslik",
+                    "author": "O. Pratov, A. To'xtayev, F. Azimova",
+                    "year": "2021",
+                    "description": "O'simliklar morfologiyasi, hujayra va to'qimalar, ildiz, poya, barg hamda generativ organlar anatomiyasi.",
+                    "fileName": "Botanika_6_sinf.pdf",
+                    "fileSize": "16.8 MB",
+                    "coverColor": "teal",
+                    "downloads": 198
+                },
+                {
+                    "id": "res-bio-7",
+                    "title": "Zoologiya: Hayvonot olami - 7-sinf darsligi",
+                    "subject": "Biologiya",
+                    "classGrade": "7-sinf",
+                    "category": "Darslik",
+                    "author": "F. Mavlonov, S. Dadayev, Q. Saparov",
+                    "year": "2022",
+                    "description": "Bir hujayralilar, umurtqasizlar va umurtqali hayvonlar sistematikasi, ularning ichki tuzilishi va ekologiyasi.",
+                    "fileName": "Zoologiya_7_sinf.pdf",
+                    "fileSize": "18.2 MB",
+                    "coverColor": "blue",
+                    "downloads": 215
+                },
+                {
+                    "id": "res-bio-8",
+                    "title": "Odam va uning salomatligi - 8-sinf darsligi",
+                    "subject": "Biologiya",
+                    "classGrade": "8-sinf",
+                    "category": "Darslik",
+                    "author": "J. Tolipova, M. Umarova, A. G'ofurov",
+                    "year": "2023",
+                    "description": "Odam anatomiyasi, fiziologiyasi, asab va gumoral boshqaruv, nafas olish, qon aylanish va gigiyena qoidalari.",
+                    "fileName": "Odam_anatomiyasi_8_sinf.pdf",
+                    "fileSize": "15.6 MB",
+                    "coverColor": "indigo",
+                    "downloads": 320
+                },
+                {
+                    "id": "res-bio-9",
+                    "title": "Sitologiya va genetika asoslari - 9-sinf darsligi",
+                    "subject": "Biologiya",
+                    "classGrade": "9-sinf",
+                    "category": "Darslik",
+                    "author": "A. Zikiryayev, A. To'xtayev",
+                    "year": "2022",
+                    "description": "Hujayra tuzilishi, ATF, biosintez, mitoz, meyoz bo'linish, Mendel qonunlari va seleksiya yutuqlari.",
+                    "fileName": "Sitologiya_Genetika_9_sinf.pdf",
+                    "fileSize": "21.0 MB",
+                    "coverColor": "violet",
+                    "downloads": 274
+                },
+                {
+                    "id": "res-bio-10",
+                    "title": "Umumiy biologiya - 10-sinf darsligi",
+                    "subject": "Biologiya",
+                    "classGrade": "10-sinf",
+                    "category": "Darslik",
+                    "author": "A. G'ofurov, A. Abdukarimov, J. Tolipova",
+                    "year": "2023",
+                    "description": "Molekulyar biologiya, biokimyoviy jarayonlar, ontogenez, biotexnologiya va genetik muhandislik asoslari.",
+                    "fileName": "Umumiy_biologiya_10_sinf.pdf",
+                    "fileSize": "19.5 MB",
+                    "coverColor": "cyan",
+                    "downloads": 185
+                },
+                {
+                    "id": "res-bio-11",
+                    "title": "Umumiy biologiya va ekologiya - 11-sinf darsligi",
+                    "subject": "Biologiya",
+                    "classGrade": "11-sinf",
+                    "category": "Darslik",
+                    "author": "A. G'ofurov, J. Tolipova, M. Umarova",
+                    "year": "2024",
+                    "description": "Darvin ta'limoti, mikroevolyutsiya, makroevolyutsiya, Yerda hayotning paydo bo'lishi va biosfera muhofazasi.",
+                    "fileName": "Biologiya_11_sinf.pdf",
+                    "fileSize": "22.3 MB",
+                    "coverColor": "emerald",
+                    "downloads": 240
+                },
+                {
+                    "id": "res-dtm-bio",
+                    "title": "DTM / BMBA Biologiya test to'plami va yechimlari",
+                    "subject": "Biologiya",
+                    "classGrade": "Abituriyent",
+                    "category": "Test to'plami",
+                    "author": "Davlat Test Markazi (BMBA ekspertlari)",
+                    "year": "2024",
+                    "description": "OTMlarga kirish imtihonlari uchun yangi formatdagi 1500+ murakkab testlar, masalalar va grafik tahlillar to'plami.",
+                    "fileName": "DTM_Biologiya_2024.pdf",
+                    "fileSize": "28.5 MB",
+                    "coverColor": "rose",
+                    "downloads": 580
+                },
+                {
+                    "id": "res-atlas-bio",
+                    "title": "Odam anatomiyasi va gistologiyasi rangli atlasi",
+                    "subject": "Biologiya",
+                    "classGrade": "8-sinf",
+                    "category": "Atlas",
+                    "author": "Respublika Ta'lim Markazi",
+                    "year": "2023",
+                    "description": "Inson suyagi, mushaklari, ichki a'zolari va to'qimalarining yuqori sifatli rangli illyustratsiyalar to'plami.",
+                    "fileName": "Anatomiya_Atlas_Rangli.pdf",
+                    "fileSize": "34.1 MB",
+                    "coverColor": "amber",
+                    "downloads": 412
+                },
+                {
+                    "id": "res-lab-bio",
+                    "title": "Biologiya fanidan laboratoriya ishlari daftari",
+                    "subject": "Biologiya",
+                    "classGrade": "7-sinf",
+                    "category": "Laboratoriya",
+                    "author": "O'zbekiston Metodistlar Assotsiatsiyasi",
+                    "year": "2023",
+                    "description": "Mikroskop bilan ishlash, vaqtinchalik mikropreparatlar tayyorlash va tajribalarni mustaqil o'tkazish yo'riqnomasi.",
+                    "fileName": "Laboratoriya_Daftari_Biologiya.pdf",
+                    "fileSize": "9.2 MB",
+                    "coverColor": "teal",
+                    "downloads": 164
+                },
+                {
+                    "id": "res-chem-7",
+                    "title": "Umumiy Kimyo - 7-sinf darsligi",
+                    "subject": "Kimyo",
+                    "classGrade": "7-sinf",
+                    "category": "Darslik",
+                    "author": "I. Asqarov, N. To'xtaboyev",
+                    "year": "2022",
+                    "description": "Kimyoning asosiy tushunchalari, kimyoviy elementlar, davriy qonun va oddiy moddalarning xossalari.",
+                    "fileName": "Kimyo_7_sinf.pdf",
+                    "fileSize": "14.5 MB",
+                    "coverColor": "indigo",
+                    "downloads": 128
+                },
+                {
+                    "id": "res-metod-bio",
+                    "title": "Biologiya o'qitish metodikasi va dars ishlanmalari",
+                    "subject": "Biologiya",
+                    "classGrade": "Barchasi",
+                    "category": "Metodik qo'llanma",
+                    "author": "J. Tolipova, N. Alimova",
+                    "year": "2023",
+                    "description": "O'qituvchilar uchun zamonaviy pedagogik texnologiyalar, STEAM yondashuvi va interaktiv dars rejalari.",
+                    "fileName": "Biologiya_Metodik_Qollanma.pdf",
+                    "fileSize": "11.7 MB",
+                    "coverColor": "blue",
+                    "downloads": 205
+                }
+            ]
+
+            initial_resources = []
+            for item in sample_resources:
+                pdf_path = os.path.join(res_dir, item["fileName"])
+                _generate_sample_pdf_if_missing(
+                    file_path=pdf_path,
+                    title=item["title"],
+                    author=item["author"],
+                    grade=item["classGrade"],
+                    desc=item["description"]
+                )
+                initial_resources.append(
+                    ResourceModel(
+                        id=item["id"],
+                        title=item["title"],
+                        subject=item["subject"],
+                        classGrade=item["classGrade"],
+                        category=item["category"],
+                        author=item["author"],
+                        year=item["year"],
+                        description=item["description"],
+                        fileUrl=f"/uploads/resources/{item['fileName']}",
+                        fileName=item["fileName"],
+                        fileSize=item["fileSize"],
+                        coverColor=item["coverColor"],
+                        downloads=item["downloads"],
+                        createdAt=int(time.time() * 1000)
+                    )
+                )
+
+            db.add_all(initial_resources)
 
         db.commit()
     except Exception as e:

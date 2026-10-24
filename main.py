@@ -3,6 +3,7 @@ import json
 import time
 import random
 import re
+import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import copy
@@ -18,7 +19,8 @@ from database import clean_demo_records
 from database import (
     init_db, SessionLocal,
     UserModel, GroupModel, HomeworkModel,
-    ChatMessageModel, SubmissionModel, TeacherTestModel
+    ChatMessageModel, SubmissionModel, TeacherTestModel,
+    ResourceModel
 )
 from email_service import notify_students_new_homework, notify_student_homework_graded
 
@@ -1337,6 +1339,188 @@ A) 36 ta  |  B) 72 ta  |  C) 432 ta  |  D) 456 ta
 *To'g'ri javob:* **D** (38 × 12 = 456 ta ATF).
 *Yechimi:* 1 molekula glyukoza to'liq parchalanganda 38 ta ATF hosil bo'ladi. 12 × 38 = 456."""
         }
+
+# -------------------------------------------------------------
+# RESOURCE LIBRARY (Darsliklar va Resurslar) APIs
+# -------------------------------------------------------------
+@app.get("/api/resources")
+async def get_resources(
+    subject: Optional[str] = None,
+    classGrade: Optional[str] = None,
+    category: Optional[str] = None,
+    search: Optional[str] = None
+):
+    db = SessionLocal()
+    try:
+        query = db.query(ResourceModel)
+
+        if subject and subject.lower() not in ["all", "barchasi"]:
+            query = query.filter(ResourceModel.subject.ilike(f"%{subject.strip()}%"))
+
+        if classGrade and classGrade.lower() not in ["all", "barchasi"]:
+            query = query.filter(ResourceModel.classGrade.ilike(f"%{classGrade.strip()}%"))
+
+        if category and category.lower() not in ["all", "barchasi"]:
+            query = query.filter(ResourceModel.category.ilike(f"%{category.strip()}%"))
+
+        if search and search.strip():
+            s = f"%{search.strip()}%"
+            query = query.filter(
+                (ResourceModel.title.ilike(s)) |
+                (ResourceModel.author.ilike(s)) |
+                (ResourceModel.description.ilike(s))
+            )
+
+        resources = query.order_by(ResourceModel.createdAt.desc()).all()
+        return [r.to_dict() for r in resources]
+    finally:
+        db.close()
+
+@app.get("/api/resources/{resource_id}")
+async def get_resource_by_id(resource_id: str):
+    db = SessionLocal()
+    try:
+        res = db.query(ResourceModel).filter(ResourceModel.id == resource_id).first()
+        if not res:
+            raise HTTPException(status_code=404, detail="Resurs topilmadi")
+        return res.to_dict()
+    finally:
+        db.close()
+
+@app.post("/api/resources")
+async def create_resource(request: Request):
+    user_role = request.headers.get("X-User-Role")
+    user_id = request.headers.get("X-User-Id")
+    
+    db = SessionLocal()
+    try:
+        if user_id:
+            user = db.query(UserModel).filter(UserModel.id == user_id).first()
+            if user and user.role != "teacher":
+                raise HTTPException(status_code=403, detail="Faqat o'qituvchilar yangi resurs qo'sha oladi.")
+        elif user_role and user_role != "teacher":
+            raise HTTPException(status_code=403, detail="Faqat o'qituvchilar yangi resurs qo'sha oladi.")
+
+        data = await request.json()
+        title = data.get("title", "").strip()
+        if not title:
+            raise HTTPException(status_code=400, detail="Resurs nomi kiritilishi shart.")
+
+        file_url = data.get("fileUrl", "").strip()
+        if not file_url:
+            raise HTTPException(status_code=400, detail="Fayl yuklanishi yoki fayl manzili ko'rsatilishi shart.")
+
+        new_id = f"res-{uuid.uuid4().hex[:10]}"
+        resource = ResourceModel(
+            id=new_id,
+            title=title,
+            subject=data.get("subject", "Biologiya"),
+            classGrade=data.get("classGrade", "Barchasi"),
+            category=data.get("category", "Darslik"),
+            author=data.get("author", ""),
+            year=data.get("year", str(time.strftime("%Y"))),
+            description=data.get("description", ""),
+            fileUrl=file_url,
+            fileName=data.get("fileName") or "darslik.pdf",
+            fileSize=data.get("fileSize") or "10 MB",
+            coverColor=data.get("coverColor") or "emerald",
+            downloads=0,
+            createdAt=int(time.time() * 1000)
+        )
+        db.add(resource)
+        db.commit()
+        db.refresh(resource)
+        return resource.to_dict()
+    finally:
+        db.close()
+
+@app.delete("/api/resources/{resource_id}")
+async def delete_resource(resource_id: str, request: Request):
+    user_role = request.headers.get("X-User-Role")
+    user_id = request.headers.get("X-User-Id")
+
+    db = SessionLocal()
+    try:
+        if user_id and user_id != "undefined":
+            user = db.query(UserModel).filter(UserModel.id == user_id).first()
+            if user and user.role != "teacher":
+                raise HTTPException(status_code=403, detail="Faqat o'qituvchilar resurslarni o'chira oladi.")
+        elif user_role and user_role != "teacher":
+            raise HTTPException(status_code=403, detail="Faqat o'qituvchilar resurslarni o'chira oladi.")
+
+        res = db.query(ResourceModel).filter(ResourceModel.id == resource_id).first()
+        if not res:
+            raise HTTPException(status_code=404, detail="Resurs topilmadi")
+
+        # Safely delete uploaded file if not standard seeded book
+        try:
+            if res.fileUrl and res.fileUrl.startswith("/uploads/") and not res.fileUrl.startswith("/uploads/resources/"):
+                local_file = BASE_DIR / res.fileUrl.lstrip("/")
+                if local_file.is_file():
+                    local_file.unlink()
+        except Exception:
+            pass
+
+        db.delete(res)
+        db.commit()
+        return {"success": True, "message": "Resurs muvaffaqiyatli o'chirildi"}
+    finally:
+        db.close()
+
+@app.get("/api/resources/{resource_id}/download-file")
+async def download_resource_file(resource_id: str):
+    """Forced direct attachment file download with automatic counter increment."""
+    db = SessionLocal()
+    try:
+        res = db.query(ResourceModel).filter(ResourceModel.id == resource_id).first()
+        if not res:
+            raise HTTPException(status_code=404, detail="Resurs topilmadi")
+
+        res.downloads = (res.downloads or 0) + 1
+        db.commit()
+
+        file_url = res.fileUrl or ""
+        clean_url = file_url.lstrip("/")
+        candidate_paths = [
+            BASE_DIR / clean_url,
+            UPLOAD_DIR / clean_url.replace("uploads/", ""),
+            BASE_DIR / "uploads" / "resources" / (res.fileName or "")
+        ]
+
+        found_path = None
+        for p in candidate_paths:
+            if p.is_file():
+                found_path = p
+                break
+
+        if found_path:
+            return FileResponse(
+                path=str(found_path),
+                filename=res.fileName or found_path.name,
+                media_type="application/pdf"
+            )
+
+        if file_url.startswith("http://") or file_url.startswith("https://"):
+            from fastapi.responses import RedirectResponse
+            return RedirectResponse(url=file_url)
+
+        raise HTTPException(status_code=404, detail="Fayl serverda topilmadi")
+    finally:
+        db.close()
+
+@app.post("/api/resources/{resource_id}/download")
+async def register_resource_download(resource_id: str):
+    db = SessionLocal()
+    try:
+        res = db.query(ResourceModel).filter(ResourceModel.id == resource_id).first()
+        if not res:
+            raise HTTPException(status_code=404, detail="Resurs topilmadi")
+
+        res.downloads = (res.downloads or 0) + 1
+        db.commit()
+        return {"success": True, "downloads": res.downloads}
+    finally:
+        db.close()
 
 # -------------------------------------------------------------
 # STATS SUMMARY API (PostgreSQL)

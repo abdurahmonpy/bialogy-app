@@ -15,6 +15,7 @@
         { label: "Statistika qismi", path: "/teacher/homework-stats.html", cleanPath: "/teacher/homework-stats", icon: "bar-chart-2" }
       ]
     },
+    { label: "Resurslar", path: "/teacher/resources.html", cleanPath: "/teacher/resources", icon: "book-open" },
     { label: "O'quvchilar", path: "/teacher/students.html", cleanPath: "/teacher/students", icon: "graduation-cap" },
     { label: "Test Markaz", path: "/teacher/test.html", cleanPath: "/teacher/test", icon: "file-check" },
     { label: "Statistika", path: "/teacher/stats.html", cleanPath: "/teacher/stats", icon: "bar-chart-3" },

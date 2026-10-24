@@ -4,8 +4,9 @@
   
   const menuItems = [
     { label: "Bosh sahifa", path: "/student/index.html", cleanPath: "/student", icon: "layout-dashboard" },
+    { label: "Resurslar", path: "/student/resources.html", cleanPath: "/student/resources", icon: "book-open" },
     { label: "Chat", path: "/student/chat.html", cleanPath: "/student/chat", icon: "message-circle" },
-    { label: "Uyga vazifa", path: "/student/homework.html", cleanPath: "/student/homework", icon: "book-open" },
+    { label: "Uyga vazifa", path: "/student/homework.html", cleanPath: "/student/homework", icon: "clipboard-list" },
     { label: "Test", path: "/student/test.html", cleanPath: "/student/test", icon: "check-circle-2" }
   ];
 
