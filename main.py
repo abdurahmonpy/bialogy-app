@@ -58,44 +58,43 @@ app.add_middleware(
 async def enforce_auth_and_access_control(request: Request, call_next):
     path = request.url.path
 
-    # Allow static assets and uploads
-    if path.startswith("/static") or path.startswith("/uploads") or path == "/favicon.ico":
-        return await call_next(request)
+    # Allow static assets, uploads and public auth endpoints
+    is_public = path.startswith("/static") or path.startswith("/uploads") or path == "/favicon.ico" or path in ["/api/auth/login", "/api/auth/register", "/api/auth/me", "/api/upload"]
 
-    # Allow public auth endpoints
-    if path in ["/api/auth/login", "/api/auth/register", "/api/auth/me", "/api/upload"]:
-        return await call_next(request)
+    if not is_public:
+        user_id = request.headers.get("X-User-Id")
+        if user_id:
+            db = SessionLocal()
+            try:
+                user = db.query(UserModel).filter(UserModel.id == user_id).first()
+                if user:
+                    # 1. Block AI Chat for Students on Backend
+                    if user.role == "student":
+                        if path.startswith("/api/teacher/ai-assistant") or path.startswith("/api/tutor-chat"):
+                            return JSONResponse(
+                                status_code=403,
+                                content={"detail": "Talabalar uchun sun'iy intellekt xizmati mavjud emas. Ruxsat berilmagan."}
+                            )
 
-    user_id = request.headers.get("X-User-Id")
-    user_role = request.headers.get("X-User-Role")
+                    # 2. Block Pending Students from all Action APIs
+                    if user.role == "student" and user.status == "pending":
+                        if path.startswith("/api/"):
+                            return JSONResponse(
+                                status_code=403,
+                                content={
+                                    "detail": "Your account has not been approved by a teacher yet. Please wait.",
+                                    "status": "pending"
+                                }
+                            )
+            finally:
+                db.close()
 
-    if user_id:
-        db = SessionLocal()
-        try:
-            user = db.query(UserModel).filter(UserModel.id == user_id).first()
-            if user:
-                # 1. Block AI Chat for Students on Backend
-                if user.role == "student":
-                    if path.startswith("/api/teacher/ai-assistant") or path.startswith("/api/tutor-chat"):
-                        return JSONResponse(
-                            status_code=403,
-                            content={"detail": "Talabalar uchun sun'iy intellekt xizmati mavjud emas. Ruxsat berilmagan."}
-                        )
-
-                # 2. Block Pending Students from all Action APIs
-                if user.role == "student" and user.status == "pending":
-                    if path.startswith("/api/"):
-                        return JSONResponse(
-                            status_code=403,
-                            content={
-                                "detail": "Your account has not been approved by a teacher yet. Please wait.",
-                                "status": "pending"
-                            }
-                        )
-        finally:
-            db.close()
-
-    return await call_next(request)
+    response = await call_next(request)
+    if path.endswith(".html") or not "." in path.split("/")[-1]:
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
 
 UPLOAD_DIR = BASE_DIR / "uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -220,23 +219,44 @@ async def call_openrouter_api(
         "X-Title": "BioEdu Maktab Platformasi",
         "Content-Type": "application/json"
     }
-    payload = {
-        "model": model,
-        "messages": messages,
-        "temperature": temperature,
-        "max_tokens": max_tokens
-    }
 
-    async with httpx.AsyncClient(timeout=timeout) as client:
-        res = await client.post(url, headers=headers, json=payload)
-        if res.status_code == 200:
-            data = res.json()
-            choices = data.get("choices") or []
-            if choices:
-                return choices[0].get("message", {}).get("content", "").strip()
-            return ""
-        else:
-            raise HTTPException(status_code=res.status_code, detail=f"OpenRouter xatosi: {res.text}")
+    # Candidate models in case the primary free model is busy or rate-limited
+    candidate_models = [model]
+    for fallback in [
+        "nvidia/nemotron-3-ultra-550b-a55b:free",
+        "google/gemini-2.0-flash-exp:free",
+        "meta-llama/llama-3.3-70b-instruct:free",
+        "mistralai/mistral-small-24b-instruct-2501:free"
+    ]:
+        if fallback not in candidate_models:
+            candidate_models.append(fallback)
+
+    last_error = None
+    for cand_model in candidate_models:
+        payload = {
+            "model": cand_model,
+            "messages": messages,
+            "temperature": temperature,
+            "max_tokens": max_tokens
+        }
+        try:
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                res = await client.post(url, headers=headers, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    choices = data.get("choices") or []
+                    if choices:
+                        content = choices[0].get("message", {}).get("content", "").strip()
+                        if content:
+                            return content
+                else:
+                    last_error = f"Status {res.status_code}: {res.text}"
+                    print(f"OpenRouter attempt with {cand_model} failed: {last_error}")
+        except Exception as e:
+            last_error = str(e)
+            print(f"OpenRouter exception with {cand_model}: {e}")
+
+    raise HTTPException(status_code=502, detail=f"OpenRouter AI xatosi: {last_error}")
 
 async def generate_biotutor_answer(question: str) -> str:
     if API_KEY:
@@ -2018,22 +2038,28 @@ async def serve_spa(full_path: str, request: Request):
     if user_role == "student" and ("teacher" in full_path or "ai-assistant" in full_path):
         raise HTTPException(status_code=403, detail="Talabalar uchun o'qituvchi va AI sahifalariga kirish taqiqlangan.")
 
+    no_cache_headers = {
+        "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+        "Pragma": "no-cache",
+        "Expires": "0"
+    }
+
     requested_file = FRONTEND_DIR / full_path
     if full_path and requested_file.is_file():
-        return FileResponse(str(requested_file))
+        return FileResponse(str(requested_file), headers=no_cache_headers)
 
     # Clean URLs support like /student/chat, /teacher/stats, /login
     if full_path:
         html_candidate = FRONTEND_DIR / f"{full_path}.html"
         if html_candidate.is_file():
-            return FileResponse(str(html_candidate))
+            return FileResponse(str(html_candidate), headers=no_cache_headers)
         dir_index = FRONTEND_DIR / full_path / "index.html"
         if dir_index.is_file():
-            return FileResponse(str(dir_index))
+            return FileResponse(str(dir_index), headers=no_cache_headers)
 
     index_file = FRONTEND_DIR / "index.html"
     if index_file.exists():
-        return FileResponse(str(index_file))
+        return FileResponse(str(index_file), headers=no_cache_headers)
 
     return JSONResponse(
         status_code=200,

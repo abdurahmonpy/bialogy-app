@@ -19,7 +19,7 @@
     { label: "O'quvchilar", path: "/teacher/students.html", cleanPath: "/teacher/students", icon: "graduation-cap" },
     { label: "Test Markaz", path: "/teacher/test.html", cleanPath: "/teacher/test", icon: "file-check" },
     { label: "Statistika", path: "/teacher/stats.html", cleanPath: "/teacher/stats", icon: "bar-chart-3" },
-    { label: "AI Yordamchi", path: "/teacher/ai-assistant.html", cleanPath: "/teacher/ai-assistant", icon: "sparkles" },
+    { label: "AI Yordamchi", path: "/teacher/ai-assistant.html?v=3.0", cleanPath: "/teacher/ai-assistant", icon: "sparkles" },
     { label: "O'quvchi qo'shish", path: "/teacher/add-student.html", cleanPath: "/teacher/add-student", icon: "user-plus" }
   ];
 
