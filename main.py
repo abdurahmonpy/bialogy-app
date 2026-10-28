@@ -33,6 +33,9 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 API_KEY = os.getenv("GEMINI_API_KEY", "")
 DEFAULT_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
 
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_MODEL = os.getenv("OPENROUTER_MODEL", "nvidia/nemotron-3-ultra-550b-a55b:free")
+
 app = FastAPI(title="BioEdu — Biologiya Ta'lim Platformasi API")
 
 # Enable CORS for split deployment (Railway Backend + Vercel Frontend)
@@ -101,17 +104,24 @@ async def upload_file(file: UploadFile = File(...)):
     if not file or not file.filename:
         raise HTTPException(status_code=400, detail="Fayl tanlanmadi")
 
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     now = int(time.time() * 1000)
-    clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename)
+    clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', file.filename).strip('_')
+    if not clean_name:
+        clean_name = "darslik.pdf"
     saved_filename = f"{now}_{clean_name}"
     file_path = UPLOAD_DIR / saved_filename
 
     try:
-        content = await file.read()
+        total_size = 0
         with open(file_path, "wb") as f:
-            f.write(content)
+            while chunk := await file.read(1024 * 1024):  # 1MB buffer
+                f.write(chunk)
+                total_size += len(chunk)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Faylni saqlashda xatolik: {e}")
+
+    size_mb = f"{(total_size / (1024 * 1024)):.1f} MB" if total_size >= 1024 * 1024 else f"{(total_size / 1024):.0f} KB"
 
     return {
         "success": True,
@@ -119,7 +129,8 @@ async def upload_file(file: UploadFile = File(...)):
         "fileUrl": f"/uploads/{saved_filename}",
         "filename": file.filename,
         "fileName": file.filename,
-        "size": len(content)
+        "size": total_size,
+        "fileSize": size_mb
     }
 
 @app.on_event("startup")
@@ -189,6 +200,41 @@ async def call_gemini_api(
                 time.sleep(delay_sec * attempt)
 
     raise HTTPException(status_code=500, detail=f"Gemini API bilan bog'lanib bo'lmadi: {last_error}")
+
+async def call_openrouter_api(
+    messages: List[Dict[str, str]],
+    model: str = OPENROUTER_MODEL,
+    temperature: float = 0.3,
+    max_tokens: int = 2500,
+    timeout: float = 55.0
+) -> str:
+    if not OPENROUTER_API_KEY:
+        raise ValueError("OPENROUTER_API_KEY sozlanmagan")
+
+    url = "https://openrouter.ai/api/v1/chat/completions"
+    headers = {
+        "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+        "HTTP-Referer": "https://bioedu.uz",
+        "X-Title": "BioEdu Maktab Platformasi",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": max_tokens
+    }
+
+    async with httpx.AsyncClient(timeout=timeout) as client:
+        res = await client.post(url, headers=headers, json=payload)
+        if res.status_code == 200:
+            data = res.json()
+            choices = data.get("choices") or []
+            if choices:
+                return choices[0].get("message", {}).get("content", "").strip()
+            return ""
+        else:
+            raise HTTPException(status_code=res.status_code, detail=f"OpenRouter xatosi: {res.text}")
 
 async def generate_biotutor_answer(question: str) -> str:
     if API_KEY:
@@ -1220,6 +1266,7 @@ async def delete_teacher_test(test_id: str):
 @app.post("/api/teacher/ai-assistant")
 async def teacher_ai_assistant(request: Request):
     user_role = request.headers.get("X-User-Role")
+    user_id = request.headers.get("X-User-Id")
     if user_role == "student":
         raise HTTPException(
             status_code=403,
@@ -1227,118 +1274,381 @@ async def teacher_ai_assistant(request: Request):
         )
 
     body = await request.json()
-    task_type = body.get("type", "lesson_plan")
-    topic = body.get("topic") or body.get("message") or body.get("prompt") or "Fotosintez va Hujayra almashinuvi"
+    task_type = body.get("type", "chat")
+    raw_message = (body.get("message") or body.get("prompt") or body.get("topic") or "").strip()
     subject = body.get("subject") or "Biologiya"
     grade = body.get("grade") or "8-sinf"
 
-    # Support interactive conversational chat for teacher
-    if task_type == "chat":
-        user_message = (body.get("message") or body.get("prompt") or topic or "").strip()
-        if not user_message:
-            raise HTTPException(status_code=400, detail="Xabar matni bo'sh bo'lishi mumkin emas")
+    if not raw_message and task_type not in ["lesson_plan", "experiment"]:
+        raise HTTPException(status_code=400, detail="Xabar matni bo'sh bo'lishi mumkin emas")
 
-        if API_KEY:
-            prompt = f"""Siz O'zbekiston milliy maktablari uchun tajribali biologiya va kimyo fani metodisti, katta pedagog-maslahatchisiz.
-Siz faqat O'QITUVCHILARGA dars o'tish metodikasi, qiyin mavzularni o'quvchilarga sodda tushuntirish usullari, zamonaviy interaktiv mashg'ulotlar, laboratoriya ishlari va pedagogik masalalar bo'yicha yordam berasiz.
-Ustoz savoli:
-"{user_message}"
+    user_message = raw_message or f"{grade} {subject} mavzusi"
+    user_lower = user_message.lower()
 
-Iltimos, ustozga professional, amaliy va aniq javob bering."""
+    db = SessionLocal()
+    try:
+        # Check if caller is student in DB
+        if user_id and user_id != "undefined":
+            user_check = db.query(UserModel).filter(UserModel.id == user_id).first()
+            if user_check and user_check.role == "student":
+                raise HTTPException(status_code=403, detail="Talabalar uchun sun'iy intellekt xizmati mavjud emas.")
+
+        # 1. Match @ book mention or textbook reference from library
+        resources = db.query(ResourceModel).all()
+        matched_resource = None
+        
+        # Check patterns like @["Title"], @"Title", @[Title], or @Title
+        book_mention_match = re.search(r'@\[(.*?)\]|@"([^"]+)"|@([a-zA-Z0-9_\-а-яА-ЯёЁ\s]+)', user_message)
+        if book_mention_match:
+            mention_raw = (book_mention_match.group(1) or book_mention_match.group(2) or book_mention_match.group(3) or "").strip().lower()
+            if mention_raw:
+                for r in resources:
+                    if mention_raw in r.title.lower() or mention_raw in (r.subject or "").lower() or r.title.lower() in mention_raw:
+                        matched_resource = r
+                        break
+
+        # Check direct mentions of existing book titles
+        if not matched_resource:
+            for r in resources:
+                if len(r.title) > 3 and r.title.lower() in user_lower:
+                    matched_resource = r
+                    break
+
+        # Check intent: Test creation / questions generation
+        is_test_intent = any(k in user_lower for k in [
+            "test tuz", "test yarat", "savollar tuz", "test markaziga qo'sh",
+            "test markazida qo'sh", "test tayyorla", "test sinovi", "savol tuz",
+            "test tuzib ber", "test tuzsin", "test qil", "test bering", "test tuzib",
+            "savollar shakllantir", "test savollari"
+        ]) or (matched_resource is not None and any(w in user_lower for w in ["test", "savol", "imtihon"]))
+
+        # Check intent: Account and student statistics
+        is_stats_intent = any(k in user_lower for k in [
+            "statistika", "hisobot", "o'zlashtirish", "o'quvchilar ko'rsatkichi",
+            "faollik", "reyting", "account statistikasi", "platforma statistikasi",
+            "o'quvchilar statistikasi", "baholar", "nechta o'quvchi", "ballar",
+            "guruhlar statistikasi", "o'quvchilar natija"
+        ]) and not is_test_intent
+
+        # -------------------------------------------------------------
+        # 1. ACCOUNT & STUDENT STATISTICS INTENT
+        # -------------------------------------------------------------
+        if is_stats_intent:
+            all_students = db.query(UserModel).filter(UserModel.role == "student").all()
+            approved_students = [s for s in all_students if getattr(s, "status", "pending") == "approved"]
+            pending_students = [s for s in all_students if getattr(s, "status", "pending") != "approved"]
+
+            groups = db.query(GroupModel).all()
+            group_summaries = []
+            for g in groups:
+                g_students = [s for s in all_students if s.groupId == g.id or s.classGrade == g.name]
+                group_summaries.append(f"{g.name} ({len(g_students)} nafar o'quvchi)")
+
+            submissions = db.query(SubmissionModel).all()
+            total_tests_taken = len(submissions)
+            avg_score = round(sum(s.percentage for s in submissions) / max(total_tests_taken, 1), 1) if submissions else 0
+
+            high_scores = len([s for s in submissions if s.percentage >= 85])
+            mid_scores = len([s for s in submissions if 70 <= s.percentage < 85])
+            low_scores = len([s for s in submissions if s.percentage < 70])
+
+            student_stats = []
+            for s in approved_students:
+                s_subs = [sub for sub in submissions if sub.studentId == s.id]
+                s_avg = round(sum(sub.percentage for sub in s_subs) / len(s_subs), 1) if s_subs else 0
+                student_stats.append({
+                    "name": s.fullName,
+                    "grade": s.classGrade or "Noma'lum",
+                    "testCount": len(s_subs),
+                    "avgScore": s_avg
+                })
+
+            active_students = [s for s in student_stats if s["testCount"] > 0]
+            active_students.sort(key=lambda x: x["avgScore"], reverse=True)
+            top_students = active_students[:5]
+            struggling_students = [s for s in active_students if s["avgScore"] < 60]
+
+            homeworks = db.query(HomeworkModel).all()
+            total_hw = len(homeworks)
+            total_hw_subs = sum(len(hw.submissions or []) for hw in homeworks)
+
+            teacher_tests = db.query(TeacherTestModel).all()
+            resources_count = len(resources)
+
+            stats_context = f"""
+JAMI MA'LUMOTLAR:
+- Jami ro'yxatdan o'tgan o'quvchilar: {len(all_students)} nafar (Tasdiqlangan: {len(approved_students)}, Kutilayotgan: {len(pending_students)})
+- Guruhlar ({len(groups)} ta): {', '.join(group_summaries) if group_summaries else 'Guruhlar kiritilmagan'}
+- Test Markazidagi mavzular soni: {len(teacher_tests)} ta
+- O'quvchilar topshirgan testlar jami: {total_tests_taken} marta
+- O'quvchilarning umumiy o'rtacha balli: {avg_score}%
+- Baholanish taqsimoti: A'lo (85-100%): {high_scores} ta, Yaxshi (70-84%): {mid_scores} ta, Qoniqarli/Past (<70%): {low_scores} ta
+- Top o'quvchilar: {', '.join([f"{st['name']} ({st['grade']}, o'rtacha {st['avgScore']}%)" for st in top_students]) if top_students else "Hali yetarli test yechilmagan"}
+- Qo'shimcha yordamga muhtoj o'quvchilar (<60%): {', '.join([f"{st['name']} ({st['grade']}, {st['avgScore']}%)" for st in struggling_students]) if struggling_students else "Hozircha past balli o'quvchi yo'q"}
+- Berilgan uyga vazifalar: {total_hw} ta, o'quvchilar javoblari: {total_hw_subs} ta
+- Kutubxonadagi darslik va resurslar: {resources_count} ta
+"""
+            system_prompt = """Siz maktabning bosh pedagogik tahlilchisi va AI metodistisiz.
+Faqat maktab o'qituvchilari uchun platforma statistikasi, o'quvchilar o'zlashtirishi, faollik va ta'lim sifatini tahlil qilasiz.
+Ustoz so'roviga asosan berilgan real ko'rsatkichlarni chuqur pedagogik tahlil qilib, chiroyli sarlavhalar, xulosalar va o'qituvchi uchun aniq amaliy tavsiyalar bilan o'zbek tilida taqdim eting."""
+
+            user_prompt = f"""Ustozning savoli: "{user_message}"
+
+Tizimdagi joriy ko'rsatkichlar:
+{stats_context}
+
+Iltimos, ushbu ma'lumotlar asosida professional, chiroyli formatlangan to'liq hisobot va tahliliy javob bering."""
+
             try:
-                reply = await call_gemini_api(prompt)
-                if reply:
-                    return {"result": reply, "reply": reply}
-            except Exception as e:
-                print(f"Teacher AI chat error: {e}")
+                ai_reply = await call_openrouter_api(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    model=OPENROUTER_MODEL,
+                    temperature=0.3,
+                    max_tokens=2500
+                )
+                if ai_reply:
+                    return {"result": ai_reply, "reply": ai_reply}
+            except Exception as ex:
+                print("OpenRouter stats error:", ex)
 
-        # Fallback chat response
-        return {
-            "result": f"Hurmatli ustoz! \"{user_message}\" bo'yicha tavsiya: O'quvchilar bilan mavzuni vizual animatsiyalar, muammoli vaziyatlar va kichik guruhlarda muhokama qilish orqali o'rganish dars samaradorligini sezilarli darajada oshiradi.",
-            "reply": f"Hurmatli ustoz! \"{user_message}\" bo'yicha tavsiya: O'quvchilar bilan mavzuni vizual animatsiyalar, muammoli vaziyatlar va kichik guruhlarda muhokama qilish orqali o'rganish dars samaradorligini sezilarli darajada oshiradi."
-        }
+            # Fallback stats report if network fails
+            fallback_stats = f"""## 📊 Maktab Ta'lim Platformasi Statistikasi
 
-    if API_KEY:
-        prompt = f"""Siz tajribali O'zbekiston milliy maktabi pedagogi, biologiya metodistisiz.
-Fan: {subject}
-Mavzu: {topic}
-Sinf: {grade}
-Vazifa turi: {task_type}
+- **O'quvchilar soni:** Jami {len(all_students)} nafar (Faol tasdiqlangan: {len(approved_students)}, Kutilayotgan: {len(pending_students)})
+- **Mavjud guruhlar:** {len(groups)} ta
+- **O'rtacha o'zlashtirish:** {avg_score}% ({total_tests_taken} ta test topshirilgan)
+- **Topshirilgan uyga vazifalar:** {total_hw_subs} ta
+- **Darslik va resurslar fondi:** {resources_count} ta kitob
+- **Test Markazidagi mavzular:** {len(teacher_tests)} ta
 
-Iltimos, o'qituvchi darsda bevosita qo'llashi mumkin bo'lgan professional, pedagogik mukammal dars materialini o'zbek tilida tayyorlang."""
+💡 **Tavsiya:** O'quvchilarning umumiy o'zlashtirish ko'rsatkichini oshirish uchun Test Markazida yangi interaktiv testlar tuzish va darsliklar bo'yicha mashg'ulotlarni ko'paytirish tavsiya etiladi."""
+            return {"result": fallback_stats, "reply": fallback_stats}
+
+        # -------------------------------------------------------------
+        # 2. AUTONOMOUS TEST GENERATION & TEST MARKAZ INTEGRATION
+        # -------------------------------------------------------------
+        if is_test_intent:
+            detected_subject = "Biologiya"
+            detected_grade = "8-sinf"
+            topic_hint = user_message
+            book_info = ""
+
+            if matched_resource:
+                detected_subject = matched_resource.subject or "Biologiya"
+                detected_grade = matched_resource.classGrade or "8-sinf"
+                topic_hint = matched_resource.title
+                book_info = f"""
+BELGILANGAN RESURS / DARSLIK:
+- Kitob nomi: {matched_resource.title}
+- Fan: {matched_resource.subject}
+- Sinf: {matched_resource.classGrade}
+- Muallif: {matched_resource.author or 'Noma\'lum'}
+- Tavsif: {matched_resource.description or ''}
+"""
+            else:
+                # Guess grade and subject from text if possible
+                grade_match = re.search(r'(\d+)\s*-\s*sinf', user_lower)
+                if grade_match:
+                    detected_grade = f"{grade_match.group(1)}-sinf"
+                if "kimyo" in user_lower:
+                    detected_subject = "Kimyo"
+
+            system_prompt = f"""Siz O'zbekiston umumta'lim maktablari uchun tajribali biologiya va kimyo fani metodistisiz.
+Siz o'qituvchi talabiga ko'ra darsliklar va mavzular bo'yicha mukammal, DTM standartlariga mos test savollari tuzuvchi AI Agentsiz.
+Siz faqat ta'lim, dars va pedagogika bo'yicha ishlaysiz.
+
+Siz tuzgan test Test Markaziga avtomatik kiritiladi. Shuning uchun javobingizni FAQAT va FAQAT quyidagi to'g'ri JSON formatda qaytaring (hech qanday qo'shimcha so'zsiz):
+{{
+  "topic": "Mavzu nomi",
+  "subject": "{detected_subject}",
+  "classGrade": "{detected_grade}",
+  "description": "Mavzu bo'yicha 3 bosqichli bilim sinovi",
+  "levels": [
+    {{
+      "difficulty": "Oson",
+      "title": "1-bosqich: Boshlang'ich tushunchalar",
+      "questions": [
+        {{
+          "id": 1,
+          "question": "Savol matni?",
+          "options": ["To'g'ri variant", "Noto'g'ri variant 1", "Noto'g'ri variant 2", "Noto'g'ri variant 3"],
+          "answerIndex": 0,
+          "explanation": "Qisqa ilmiy tushuntirish"
+        }},
+        {{
+          "id": 2,
+          "question": "2-savol matni?",
+          "options": ["A", "B", "C", "D"],
+          "answerIndex": 1,
+          "explanation": "..."
+        }}
+      ]
+    }},
+    {{
+      "difficulty": "O'rtacha",
+      "title": "2-bosqich: Tushunish va tahlil",
+      "questions": [
+        {{
+          "id": 3,
+          "question": "3-savol matni?",
+          "options": ["A", "B", "C", "D"],
+          "answerIndex": 2,
+          "explanation": "..."
+        }},
+        {{
+          "id": 4,
+          "question": "4-savol matni?",
+          "options": ["A", "B", "C", "D"],
+          "answerIndex": 0,
+          "explanation": "..."
+        }}
+      ]
+    }},
+    {{
+      "difficulty": "Qiyin",
+      "title": "3-bosqich: DTM va olimpiada darajasi",
+      "questions": [
+        {{
+          "id": 5,
+          "question": "5-savol matni?",
+          "options": ["A", "B", "C", "D"],
+          "answerIndex": 3,
+          "explanation": "..."
+        }},
+        {{
+          "id": 6,
+          "question": "6-savol matni?",
+          "options": ["A", "B", "C", "D"],
+          "answerIndex": 1,
+          "explanation": "..."
+        }}
+      ]
+    }}
+  ]
+}}"""
+
+            test_prompt = f"""Ustoz so'rovi: "{user_message}"
+{book_info}
+Asosiy mavzu / manba: {topic_hint}
+
+Iltimos, ushbu manba bo'yicha 3 bosqichli (Oson, O'rtacha, Qiyin) jami kamida 6-9 ta sifatli va ilmiy to'g'ri test savolini yuqoridagi JSON formatda shakllantiring."""
+
+            try:
+                ai_response = await call_openrouter_api(
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": test_prompt}
+                    ],
+                    model=OPENROUTER_MODEL,
+                    temperature=0.2,
+                    max_tokens=3500
+                )
+
+                test_json = None
+                cleaned_json = ai_response.strip()
+                if "```json" in cleaned_json:
+                    cleaned_json = cleaned_json.split("```json")[1].split("```")[0].strip()
+                elif "```" in cleaned_json:
+                    cleaned_json = cleaned_json.split("```")[1].split("```")[0].strip()
+                elif "{" in cleaned_json and "}" in cleaned_json:
+                    start_idx = cleaned_json.find("{")
+                    end_idx = cleaned_json.rfind("}")
+                    cleaned_json = cleaned_json[start_idx:end_idx+1]
+
+                test_json = json.loads(cleaned_json)
+
+                if test_json and isinstance(test_json, dict) and test_json.get("levels"):
+                    now = int(time.time() * 1000)
+                    test_id = f"test-ai-{now}"
+                    topic_title = test_json.get("topic") or topic_hint or "Biologiya testi"
+                    test_grade = test_json.get("classGrade") or detected_grade or "8-sinf"
+                    test_subject = test_json.get("subject") or detected_subject or "Biologiya"
+                    test_desc = test_json.get("description") or f"{topic_title} mavzusida AI Agent tomonidan tuzilgan 3 bosqichli test"
+
+                    levels = test_json.get("levels", [])
+                    total_q = sum(len(lvl.get("questions", [])) for lvl in levels)
+
+                    new_teacher_test = TeacherTestModel(
+                        id=test_id,
+                        subject=test_subject,
+                        topic=topic_title,
+                        classGrade=test_grade,
+                        description=test_desc,
+                        teacherName="AI Metodist Agent",
+                        createdAt=now,
+                        levels=levels
+                    )
+                    db.add(new_teacher_test)
+                    db.commit()
+                    db.refresh(new_teacher_test)
+
+                    summary_lines = [
+                        f"🎉 **Test muvaffaqiyatli tuzildi va Test Markaziga qo'shildi!**",
+                        f"",
+                        f"📌 **Mavzu:** {topic_title}",
+                        f"📚 **Fan va Sinf:** {test_subject} • {test_grade}",
+                        f"📊 **Savollar soni:** {total_q} ta (3 ta bosqich: Oson, O'rtacha, Qiyin)",
+                        f"",
+                        f"Ushbu test avtomatik tarzda **[Test Markazi](/teacher/test.html)** bo'limiga kiritildi va o'quvchilar uchun faol holatga keltirildi.",
+                        f"",
+                        f"### 📋 Shakllantirilgan test savollari:"
+                    ]
+                    for lvl in levels:
+                        summary_lines.append(f"\n**{lvl.get('difficulty', 'Bosqich')} — {lvl.get('title', '')}:**")
+                        for q in lvl.get("questions", []):
+                            summary_lines.append(f"- ❓ **{q.get('question')}**")
+                            for idx, opt in enumerate(q.get("options", [])):
+                                mark = "✅ " if idx == q.get("answerIndex") else "   "
+                                letter = chr(65 + idx)
+                                summary_lines.append(f"   {mark}{letter}) {opt}")
+                            if q.get("explanation"):
+                                summary_lines.append(f"   *Izoh:* {q.get('explanation')}")
+
+                    full_reply = "\n".join(summary_lines)
+                    return {
+                        "result": full_reply,
+                        "reply": full_reply,
+                        "createdTest": new_teacher_test.to_dict()
+                    }
+
+                return {"result": ai_response, "reply": ai_response}
+            except Exception as test_err:
+                print("Test creation error:", test_err)
+
+        # -------------------------------------------------------------
+        # 3. GENERAL PEDAGOGICAL & EDUCATIONAL CHAT INTENT
+        # -------------------------------------------------------------
+        system_prompt = """Siz O'zbekiston umumta'lim maktablari uchun tajribali biologiya va kimyo fani metodisti, katta pedagog-maslahatchi va shaxsiy AI Agentsiz.
+SIZNING ASOSIY VA QAT'IY QOIDALARINGIZ:
+1. Siz FAQAT VA FAQAT maktab darslari, biologiya va kimyo fanlari, pedagogik metodika, dars ishlanmalari, yangi o'quv metodlari, laboratoriya ishlari, o'quvchilar bilimi va ta'lim jarayoniga oid savollarga javob berasiz.
+2. Darsga yoki ta'limga mutlaqo aloqasi bo'lmagan mavzular (siyosat, shou-biznes, bekorchi g'iybat, o'yin-kulgi va boshqalar) so'ralsa, xushmuomalalik bilan: "Hurmatli ustoz! Men faqat dars, biologiya, kimyo va ta'lim metodikasi bo'yicha maslahat bera olaman. Darsingiz yoki o'quvchilaringiz bo'yicha qanday pedagogik yordam kerak?" deb javob bering.
+3. O'qituvchiga samimiy, ilmiy jihatdan aniq, amaliy va darsda qo'llashga qulay tavsiyalar bering."""
+
         try:
-            reply = await call_gemini_api(prompt)
-            if reply:
-                return {"result": reply, "reply": reply}
-        except Exception as e:
-            print(f"Teacher AI error: {e}")
+            ai_reply = await call_openrouter_api(
+                messages=[
+                    {"role": "system", "content": system_prompt},
+                    {"role": "user", "content": user_message}
+                ],
+                model=OPENROUTER_MODEL,
+                temperature=0.3,
+                max_tokens=2500
+            )
+            if ai_reply:
+                return {"result": ai_reply, "reply": ai_reply}
+        except Exception as chat_err:
+            print("Chat error:", chat_err)
 
-    if task_type == "lesson_plan":
+        # Graceful fallback response
         return {
-            "result": f"""## 📖 {grade} {subject} Fani: "{topic}" Mavzusidagi Namunaviy Dars Ishlanmasi
-
-**Darsning maqsadi:**
-- **Ta'limiy:** O'quvchilarga "{topic}" mavzusining ilmiy mohiyati, biologik mexanizmlari va ahamiyatini to'liq tushuntirish.
-- **Rivojlantiruvchi:** O'quvchilarda biologik tafakkur, solishtirma tahlil va hodisalar o'rtasidagi sabab-oqibatni aniqlash ko'nikmasini rivojlantirish.
-- **Tarbiyaviy:** Tabiatni asrash, sog'lom turmush tarziga rioya qilish va fanga qiziqishni oshirish.
-
-**Dars turi:** Yangi bilimlarni egallash va mustahkamlash darsi.
-**Kerakli jihozlar:** Darslik, mavzuga oid plakatlar, mikroskop preparatlari, slaydlar va interaktiv test kartochkalari.
-
----
-
-### ⏱️ Darsning 45 daqiqalik xronometraji:
-1. **Tashkiliy qism (3 daqiqa):** Salomlashish, davomatni aniqlash, o'quvchilar tayyorgarligini tekshirish.
-2. **O'tgan mavzuni takrorlash (7 daqiqa):** Tezkor savol-javob orqali 3 ta tayanch savolni muhokama qilish.
-3. **Yangi mavzu bayoni (20 daqiqa):** Asosiy tushunchalar va darslik qoidalarini doskada tizimli yoritish.
-4. **Mavzuni mustahkamlash (10 daqiqa):** O'quvchilar bilan birgalikda muammoli test savollarini tahlil qilish.
-5. **Darsni yakunlash va baholash (3 daqiqa):** Faol o'quvchilarni rag'batlantirish va baholash.
-6. **Uyga vazifa (2 daqiqa):** Mavzuni o'qib savollarga yozma javob tayyorlash."""
+            "result": f"Hurmatli ustoz! \"{user_message}\" bo'yicha tavsiya: Dars samaradorligini oshirish uchun o'quvchilar bilan mavzuni vizual rasmlar, interaktiv savol-javoblar va Test Markazidagi testlar orqali mustahkamlash tavsiya etiladi.",
+            "reply": f"Hurmatli ustoz! \"{user_message}\" bo'yicha tavsiya: Dars samaradorligini oshirish uchun o'quvchilar bilan mavzuni vizual rasmlar, interaktiv savol-javoblar va Test Markazidagi testlar orqali mustahkamlash tavsiya etiladi."
         }
-    elif task_type == "experiment":
-        return {
-            "result": f"""## 🔬 {grade} {subject}: "{topic}" Mavzusidagi Amaliy Laboratoriya Mashg'uloti
-
-**Ishning maqsadi:** "{topic}" jarayonining biologik mohiyatini bevosita kuzatish va amaliy tadqiqot orqali isbotlash.
-
-**Kerakli laboratoriya jihozlari:**
-1. Maktab mikroskopi yoki lupa;
-2. Buyum va qoplagich oynachalari;
-3. Pipetka, pinset va skalpel;
-4. Distillangan suv va indikator eritmasi;
-5. O'rganilayotgan biologik namuna.
-
----
-
-### 📋 Tajribaning bosqichma-bosqich bajarilishi:
-1. **Preparat tayyorlash:** Toza buyum oynachasiga suv tomizing, namunadan yupqa qatlam joylashtiring va qoplagich oynacha bilan yoping.
-2. **Mikroskopda kuzatish:** Avval 10x, so'ngra 40x kattalashtirishda fokuslab ob'ektni o'rganing.
-3. **Kuzatuv natijalarini qayd etish:** Ko'ringan tuzilmalarni daftaringizga qalam bilan chizing.
-4. **Xulosa:** Organoidlarning tuzilishi va ularning vazifasi o'rtasidagi bog'liqlik haqida ilmiy xulosa yozing."""
-        }
-    else:
-        return {
-            "result": f"""## 🎯 {grade} {subject}: "{topic}" Bo'yicha DTM va Olimpiada Darajasidagi Murakkab Savollar
-
-### 1-Savol (Mantiqiy tahlil):
-Quyida berilgan biologik qonuniyatlar orasidan "{topic}" jarayoniga to'g'ridan-to'g'ri taalluqli bo'lmagan qatorni aniqlang:
-A) ATF energiyasining sintezlanishi va sarflanishi
-B) Membrana orqali moddalarning faol va passiv transporti
-C) Lizosomaning barcha eukariot hujayralarda yagona energiya hosil qiluvchi organoid hisoblanishi
-D) Fermentlarning o'ziga xos substrat bilan ta'sirlashishi
-
-*To'g'ri javob:* **C**
-*Tahlil:* Lizosoma energiya hosil qilmaydi, balki hujayra ichki hazmini amalga oshiradi. Energiya mitoxondriyada hosil bo'ladi.
-
----
-
-### 2-Savol (Miqdoriy hisoblash):
-Agar hujayrada 12 molekula glyukoza to'liq kislorodli parchalansa, jami necha molekula ATF sintezlanadi?
-A) 36 ta  |  B) 72 ta  |  C) 432 ta  |  D) 456 ta
-
-*To'g'ri javob:* **D** (38 × 12 = 456 ta ATF).
-*Yechimi:* 1 molekula glyukoza to'liq parchalanganda 38 ta ATF hosil bo'ladi. 12 × 38 = 456."""
-        }
+    finally:
+        db.close()
 
 # -------------------------------------------------------------
 # RESOURCE LIBRARY (Darsliklar va Resurslar) APIs
@@ -1394,36 +1704,80 @@ async def create_resource(request: Request):
     
     db = SessionLocal()
     try:
-        if user_id:
+        if user_id and user_id != "undefined":
             user = db.query(UserModel).filter(UserModel.id == user_id).first()
             if user and user.role != "teacher":
                 raise HTTPException(status_code=403, detail="Faqat o'qituvchilar yangi resurs qo'sha oladi.")
         elif user_role and user_role != "teacher":
             raise HTTPException(status_code=403, detail="Faqat o'qituvchilar yangi resurs qo'sha oladi.")
 
-        data = await request.json()
-        title = data.get("title", "").strip()
+        content_type = request.headers.get("content-type", "")
+        if "multipart/form-data" in content_type:
+            form = await request.form()
+            title = (form.get("title") or "").strip()
+            subject = form.get("subject") or "Biologiya"
+            classGrade = form.get("classGrade") or "Barchasi"
+            category = form.get("category") or "Darslik"
+            author = form.get("author") or ""
+            year = form.get("year") or str(time.strftime("%Y"))
+            description = form.get("description") or ""
+            coverColor = form.get("coverColor") or "emerald"
+            file_url = (form.get("fileUrl") or "").strip()
+            file_name = form.get("fileName") or "darslik.pdf"
+            file_size = form.get("fileSize") or "10 MB"
+
+            # Check if file was uploaded directly in this request
+            uploaded_file = form.get("file")
+            if uploaded_file and hasattr(uploaded_file, "filename") and uploaded_file.filename:
+                UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+                now = int(time.time() * 1000)
+                clean_name = re.sub(r'[^a-zA-Z0-9_.-]', '_', uploaded_file.filename).strip('_') or "darslik.pdf"
+                saved_filename = f"{now}_{clean_name}"
+                file_path = UPLOAD_DIR / saved_filename
+
+                total_size = 0
+                with open(file_path, "wb") as f:
+                    while chunk := await uploaded_file.read(1024 * 1024):
+                        f.write(chunk)
+                        total_size += len(chunk)
+
+                file_url = f"/uploads/{saved_filename}"
+                file_name = uploaded_file.filename
+                file_size = f"{(total_size / (1024 * 1024)):.1f} MB" if total_size >= 1024 * 1024 else f"{(total_size / 1024):.0f} KB"
+        else:
+            data = await request.json()
+            title = (data.get("title") or "").strip()
+            subject = data.get("subject", "Biologiya")
+            classGrade = data.get("classGrade", "Barchasi")
+            category = data.get("category", "Darslik")
+            author = data.get("author", "")
+            year = data.get("year", str(time.strftime("%Y")))
+            description = data.get("description", "")
+            coverColor = data.get("coverColor", "emerald")
+            file_url = (data.get("fileUrl") or "").strip()
+            file_name = data.get("fileName") or "darslik.pdf"
+            file_size = data.get("fileSize") or "10 MB"
+
         if not title:
             raise HTTPException(status_code=400, detail="Resurs nomi kiritilishi shart.")
 
-        file_url = data.get("fileUrl", "").strip()
         if not file_url:
-            raise HTTPException(status_code=400, detail="Fayl yuklanishi yoki fayl manzili ko'rsatilishi shart.")
+            raise HTTPException(status_code=400, detail="PDF fayl yuklanishi yoki fayl manzili (URL) ko'rsatilishi shart.")
 
         new_id = f"res-{uuid.uuid4().hex[:10]}"
         resource = ResourceModel(
             id=new_id,
             title=title,
-            subject=data.get("subject", "Biologiya"),
-            classGrade=data.get("classGrade", "Barchasi"),
-            category=data.get("category", "Darslik"),
-            author=data.get("author", ""),
-            year=data.get("year", str(time.strftime("%Y"))),
-            description=data.get("description", ""),
+            subject=subject,
+            classGrade=classGrade,
+            category=category,
+            author=author,
+            year=year,
+            description=description,
             fileUrl=file_url,
-            fileName=data.get("fileName") or "darslik.pdf",
-            fileSize=data.get("fileSize") or "10 MB",
-            coverColor=data.get("coverColor") or "emerald",
+            fileName=file_name,
+            fileSize=file_size,
+            coverColor=coverColor,
             downloads=0,
             createdAt=int(time.time() * 1000)
         )
@@ -1431,6 +1785,12 @@ async def create_resource(request: Request):
         db.commit()
         db.refresh(resource)
         return resource.to_dict()
+    except HTTPException:
+        db.rollback()
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Resursni saqlashda xatolik: {str(e)}")
     finally:
         db.close()
 

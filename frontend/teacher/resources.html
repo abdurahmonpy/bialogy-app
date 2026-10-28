@@ -260,12 +260,26 @@
 
           <!-- File Upload Panel -->
           <div id="panel-file-upload">
-            <label class="flex flex-col items-center justify-center p-4 border-2 border-dashed border-slate-200 hover:border-indigo-400 bg-slate-50 rounded-2xl cursor-pointer transition">
-              <i data-lucide="file-up" class="w-7 h-7 text-indigo-500 mb-1"></i>
-              <span id="res-file-label" class="text-xs font-bold text-slate-600 text-center">PDF faylni tanlang yoki shu yerga tashlang</span>
-              <span class="text-[10px] text-slate-400 mt-0.5">Faqat PDF format (Maks: 100MB)</span>
-              <input type="file" id="res-file-input" accept=".pdf,application/pdf" class="hidden">
-            </label>
+            <div id="dropzone-box" class="relative overflow-hidden flex flex-col items-center justify-center p-5 border-2 border-dashed border-slate-200 hover:border-indigo-500 bg-slate-50/80 hover:bg-indigo-50/30 rounded-2xl cursor-pointer transition text-center min-h-[120px]">
+              <input type="file" id="res-file-input" accept=".pdf,application/pdf" class="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-20">
+              
+              <div id="upload-placeholder" class="pointer-events-none flex flex-col items-center">
+                <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-2 shadow-xs">
+                  <i data-lucide="file-up" class="w-5 h-5"></i>
+                </div>
+                <span id="res-file-label" class="text-xs font-bold text-slate-700">PDF faylni tanlang yoki shu yerga tashlang</span>
+                <span class="text-[10px] text-slate-400 mt-1">Faqat PDF format (Maks: 100MB)</span>
+              </div>
+
+              <div id="upload-selected" class="hidden pointer-events-none flex flex-col items-center">
+                <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-1 shadow-xs">
+                  <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+                </div>
+                <span id="selected-file-name" class="text-xs font-bold text-emerald-800 break-all px-2"></span>
+                <span id="selected-file-size" class="text-[11px] font-semibold text-emerald-600 mt-0.5"></span>
+                <span class="text-[10px] text-slate-400 mt-1 font-medium">Boshqa fayl tanlash uchun bosing</span>
+              </div>
+            </div>
           </div>
 
           <!-- URL Input Panel -->
@@ -274,6 +288,12 @@
               class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 transition">
             <span class="text-[10px] text-slate-400 mt-1 block">To'g'ridan-to'g'ri PDF faylga olib boruvchi internet manzili</span>
           </div>
+        </div>
+
+        <!-- Inline Error Banner -->
+        <div id="modal-error-banner" class="hidden p-3 bg-rose-50 border border-rose-200 text-rose-700 text-xs rounded-xl flex items-center gap-2">
+          <i data-lucide="alert-circle" class="w-4 h-4 flex-shrink-0"></i>
+          <span id="modal-error-text">Xatolik yuz berdi</span>
         </div>
 
         <button type="submit" id="save-res-btn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md shadow-indigo-500/20 text-xs transition flex items-center justify-center gap-2 cursor-pointer">
@@ -396,8 +416,12 @@
 
     openAddModalBtn.addEventListener("click", () => {
       addResourceForm.reset();
-      resFileLabel.textContent = "PDF faylni tanlang yoki shu yerga tashlang";
-      resFileLabel.classList.remove("text-indigo-600");
+      const uploadPlaceholder = document.getElementById("upload-placeholder");
+      const uploadSelected = document.getElementById("upload-selected");
+      const errorBanner = document.getElementById("modal-error-banner");
+      if (uploadPlaceholder) uploadPlaceholder.classList.remove("hidden");
+      if (uploadSelected) uploadSelected.classList.add("hidden");
+      if (errorBanner) errorBanner.classList.add("hidden");
       addModal.classList.remove("hidden");
       if (window.lucide) lucide.createIcons();
     });
@@ -418,25 +442,50 @@
       document.body.style.overflow = "";
     }
 
+    function showModalError(msg) {
+      const banner = document.getElementById("modal-error-banner");
+      const errorText = document.getElementById("modal-error-text");
+      if (banner && errorText) {
+        errorText.textContent = msg;
+        banner.classList.remove("hidden");
+        if (window.lucide) lucide.createIcons();
+      } else {
+        alert(msg);
+      }
+    }
+
     resFileInput.addEventListener("change", () => {
-      if (resFileInput.files.length > 0) {
+      const uploadPlaceholder = document.getElementById("upload-placeholder");
+      const uploadSelected = document.getElementById("upload-selected");
+      const selectedFileName = document.getElementById("selected-file-name");
+      const selectedFileSize = document.getElementById("selected-file-size");
+      const errorBanner = document.getElementById("modal-error-banner");
+      if (errorBanner) errorBanner.classList.add("hidden");
+
+      if (resFileInput.files && resFileInput.files.length > 0) {
         const file = resFileInput.files[0];
         const sizeMb = (file.size / (1024 * 1024)).toFixed(1);
-        resFileLabel.textContent = `Tanlandi: ${file.name} (${sizeMb} MB)`;
-        resFileLabel.classList.add("text-indigo-600");
+        if (uploadPlaceholder) uploadPlaceholder.classList.add("hidden");
+        if (uploadSelected) uploadSelected.classList.remove("hidden");
+        if (selectedFileName) selectedFileName.textContent = file.name;
+        if (selectedFileSize) selectedFileSize.textContent = `${sizeMb} MB`;
 
         const titleInput = document.getElementById("res-title");
         if (!titleInput.value) {
           titleInput.value = file.name.replace(/\.[^/.]+$/, "").replace(/_/g, " ");
         }
+        if (window.lucide) lucide.createIcons();
       } else {
-        resFileLabel.textContent = "PDF faylni tanlang yoki shu yerga tashlang";
-        resFileLabel.classList.remove("text-indigo-600");
+        if (uploadPlaceholder) uploadPlaceholder.classList.remove("hidden");
+        if (uploadSelected) uploadSelected.classList.add("hidden");
       }
     });
 
     addResourceForm.addEventListener("submit", async (e) => {
       e.preventDefault();
+
+      const errorBanner = document.getElementById("modal-error-banner");
+      if (errorBanner) errorBanner.classList.add("hidden");
 
       const title = document.getElementById("res-title").value.trim();
       const subject = document.getElementById("res-subject").value;
@@ -447,83 +496,71 @@
       const coverColor = document.getElementById("res-color").value;
       const description = document.getElementById("res-description").value.trim();
 
-      let fileUrl = "";
-      let fileName = "darslik.pdf";
-      let fileSize = "10 MB";
+      if (!title) {
+        showModalError("Iltimos, darslik yoki resurs nomini kiriting!");
+        return;
+      }
 
       saveResBtn.disabled = true;
-      saveResBtn.innerHTML = `<span>Yuklanmoqda...</span>`;
+      saveResBtn.innerHTML = `<span class="flex items-center gap-2"><svg class="animate-spin -ml-1 mr-2 h-4 w-4 text-white inline-block" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>Resurs saqlanmoqda...</span>`;
 
       try {
+        const teacherId = currentUser?.id || "user-teacher-1";
+        const teacherRole = currentUser?.role || "teacher";
+
+        const formData = new FormData();
+        formData.append("title", title);
+        formData.append("subject", subject);
+        formData.append("classGrade", classGrade);
+        formData.append("category", category);
+        formData.append("year", year);
+        formData.append("author", author);
+        formData.append("coverColor", coverColor);
+        formData.append("description", description);
+
         if (activeSourceMode === "file") {
           if (!resFileInput.files || resFileInput.files.length === 0) {
-            alert("Iltimos, PDF faylni tanlang!");
+            showModalError("Iltimos, PDF faylni tanlang!");
             saveResBtn.disabled = false;
             saveResBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Resursni saqlash va e'lon qilish</span>`;
             if (window.lucide) lucide.createIcons();
             return;
           }
-
           const file = resFileInput.files[0];
-          const formData = new FormData();
           formData.append("file", file);
-
-          const upRes = await fetch("/api/upload", {
-            method: "POST",
-            body: formData
-          });
-
-          if (!upRes.ok) throw new Error("Faylni serverga yuklashda xatolik");
-          const upData = await upRes.json();
-          fileUrl = upData.fileUrl || upData.url;
-          fileName = upData.fileName || file.name;
-          fileSize = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
         } else {
-          fileUrl = resUrlInput.value.trim();
+          const fileUrl = resUrlInput.value.trim();
           if (!fileUrl) {
-            alert("Iltimos, PDF manzilini (URL) kiriting!");
+            showModalError("Iltimos, PDF manzilini (URL) kiriting!");
             saveResBtn.disabled = false;
             saveResBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Resursni saqlash va e'lon qilish</span>`;
             if (window.lucide) lucide.createIcons();
             return;
           }
-          fileName = fileUrl.split("/").pop() || "darslik.pdf";
-          fileSize = "Onlayn PDF";
+          formData.append("fileUrl", fileUrl);
+          formData.append("fileName", fileUrl.split("/").pop() || "darslik.pdf");
+          formData.append("fileSize", "Onlayn PDF");
         }
-
-        const teacherId = currentUser?.id || "user-teacher-1";
 
         const res = await fetch("/api/resources", {
           method: "POST",
           headers: {
-            "Content-Type": "application/json",
-            "X-User-Role": "teacher",
+            "X-User-Role": teacherRole,
             "X-User-Id": teacherId
           },
-          body: JSON.stringify({
-            title,
-            subject,
-            classGrade,
-            category,
-            author,
-            year,
-            coverColor,
-            description,
-            fileUrl,
-            fileName,
-            fileSize
-          })
+          body: formData
         });
 
         if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.detail || "Resursni saqlashda xatolik");
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || "Resursni saqlashda server xatoligi");
         }
 
         addModal.classList.add("hidden");
+        addResourceForm.reset();
         await fetchResources();
       } catch (err) {
-        alert("Xatolik: " + err.message);
+        showModalError(err.message || "Xatolik yuz berdi");
       } finally {
         saveResBtn.disabled = false;
         saveResBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Resursni saqlash va e'lon qilish</span>`;

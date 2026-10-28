@@ -286,6 +286,35 @@ def init_db():
     except Exception:
         pass
 
+    # Ensure all resources columns exist on existing databases (Render / Railway PostgreSQL migrations)
+    resource_columns = [
+        ("title", "VARCHAR"),
+        ("subject", "VARCHAR DEFAULT 'Biologiya'"),
+        ("classGrade", "VARCHAR"),
+        ("category", "VARCHAR DEFAULT 'Darslik'"),
+        ("author", "VARCHAR"),
+        ("year", "VARCHAR"),
+        ("description", "TEXT"),
+        ("fileUrl", "VARCHAR"),
+        ("fileName", "VARCHAR"),
+        ("fileSize", "VARCHAR"),
+        ("coverColor", "VARCHAR DEFAULT 'emerald'"),
+        ("downloads", "INTEGER DEFAULT 0"),
+        ("createdAt", "BIGINT")
+    ]
+    for col_name, col_type in resource_columns:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE resources ADD COLUMN IF NOT EXISTS \"{col_name}\" {col_type}"))
+                conn.commit()
+        except Exception:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(f"ALTER TABLE resources ADD COLUMN \"{col_name}\" {col_type}"))
+                    conn.commit()
+            except Exception:
+                pass
+
     seed_initial_data()
 
 def get_db():
