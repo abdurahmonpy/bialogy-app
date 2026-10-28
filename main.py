@@ -1444,6 +1444,8 @@ Iltimos, ushbu ma'lumotlar asosida professional, chiroyli formatlangan to'liq hi
         # 1.5. TEXTBOOK STUDY & CURRICULUM ANALYSIS INTENT
         # -------------------------------------------------------------
         if is_study_intent and matched_resource:
+            res_author = matched_resource.author or "Noma'lum"
+            res_desc = matched_resource.description or "Umumta'lim maktabi darsligi"
             system_prompt = f"""Siz O'zbekiston milliy maktab darsliklari eksperti, oliy toifali biologiya/kimyo metodisti va professional AI Agentsiz.
 Siz o'qituvchi tanlagan darslikni chuqur tahlil qilib, uning tuzilishi, boblari, asosiy ilmiy tushunchalari va uni darsda qanday samarali qo'llash mumkinligini tahlil qilasiz.
 
@@ -1461,9 +1463,9 @@ O'rganilishi kerak bo'lgan darslik ma'lumotlari:
 - Fan: {matched_resource.subject}
 - Sinf: {matched_resource.classGrade}
 - Kategoriya: {matched_resource.category}
-- Muallif: {matched_resource.author or 'Noma\'lum'}
+- Muallif: {res_author}
 - Nashr yili: {matched_resource.year}
-- Tavsif: {matched_resource.description or 'Umumta\'lim maktabi darsligi'}
+- Tavsif: {res_desc}
 
 Iltimos, ushbu darslikni to'liq pedagogik tahlil qilib, o'qituvchiga darsda qo'llash uchun mukammal va boy tahliliy xulosa bering."""
 
@@ -1499,13 +1501,15 @@ Iltimos, ushbu darslikni to'liq pedagogik tahlil qilib, o'qituvchiga darsda qo'l
                 detected_subject = matched_resource.subject or "Biologiya"
                 detected_grade = matched_resource.classGrade or "8-sinf"
                 topic_hint = matched_resource.title
+                res_author = matched_resource.author or "Noma'lum"
+                res_desc = matched_resource.description or ""
                 book_info = f"""
 BELGILANGAN RESURS / DARSLIK:
 - Kitob nomi: {matched_resource.title}
 - Fan: {matched_resource.subject}
 - Sinf: {matched_resource.classGrade}
-- Muallif: {matched_resource.author or 'Noma\'lum'}
-- Tavsif: {matched_resource.description or ''}
+- Muallif: {res_author}
+- Tavsif: {res_desc}
 """
             else:
                 # Guess grade and subject from text if possible
