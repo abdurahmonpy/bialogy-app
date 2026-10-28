@@ -71,6 +71,11 @@
                 <p id="header-desc" class="text-[11px] text-slate-400">Barcha o'quvchilar uchun umumiy guruh chati</p>
               </div>
             </div>
+            <div class="flex items-center gap-2">
+              <button type="button" title="Suhbatni tozalash" onclick="clearTeacherChat()" class="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition cursor-pointer">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+            </div>
           </div>
 
           <div id="teacher-msg-container" class="flex-1 p-4 lg:p-6 overflow-y-auto space-y-4 chat-scroll bg-slate-50/50">
@@ -196,13 +201,15 @@
       }
     }
 
-    async function loadTeacherMessages() {
-      container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Xabarlar yuklanmoqda...</div>`;
+    async function loadTeacherMessages(isSilent = false) {
+      if (!isSilent) {
+        container.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Xabarlar yuklanmoqda...</div>`;
+      }
 
       try {
         let url = `/api/chat/messages?channel=${activeChannel}`;
         if (activeStudent) {
-          url += `&userId=${activeStudent.id}`;
+          url += `&studentId=${encodeURIComponent(activeStudent.id)}&userId=${encodeURIComponent(activeStudent.id)}`;
         }
         const res = await fetch(url);
         const messages = await res.json();
@@ -212,6 +219,8 @@
           return;
         }
 
+        const wasNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 120;
+
         container.innerHTML = messages.map(m => {
           const isTeacher = m.senderRole === "teacher" || m.senderId === currentUser?.id;
           if (isTeacher) {
@@ -219,8 +228,8 @@
               <div class="flex justify-end gap-2.5">
                 <div class="max-w-md bg-indigo-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm text-xs leading-relaxed">
                   <div class="font-bold text-[10px] text-indigo-200 mb-0.5">Siz (Ustoz)</div>
-                  <div>${m.text}</div>
-                  <div class="text-[9px] text-indigo-300 text-right mt-1">${m.time || 'Hozir'}</div>
+                  <div>${escapeHtml(m.text)}</div>
+                  <div class="text-[9px] text-indigo-300 text-right mt-1">${m.time || m.timeStr || 'Hozir'}</div>
                 </div>
               </div>
             `;
@@ -231,18 +240,22 @@
                   ${m.senderName?.[0] || 'O'}
                 </div>
                 <div class="max-w-md bg-white border border-slate-200/80 p-3.5 rounded-2xl rounded-tl-none shadow-sm text-xs text-slate-700 leading-relaxed">
-                  <div class="font-bold text-[11px] text-slate-800 mb-0.5">${m.senderName || 'O\'quvchi'}</div>
-                  <div class="whitespace-pre-line">${m.text}</div>
-                  <div class="text-[9px] text-slate-400 text-right mt-1">${m.time || 'Hozir'}</div>
+                  <div class="font-bold text-[11px] text-slate-800 mb-0.5">${escapeHtml(m.senderName || 'O\'quvchi')}</div>
+                  <div class="whitespace-pre-line">${escapeHtml(m.text)}</div>
+                  <div class="text-[9px] text-slate-400 text-right mt-1">${m.time || m.timeStr || 'Hozir'}</div>
                 </div>
               </div>
             `;
           }
         }).join("");
 
-        container.scrollTop = container.scrollHeight;
+        if (!isSilent || wasNearBottom) {
+          container.scrollTop = container.scrollHeight;
+        }
       } catch (e) {
-        container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Xatolik yuz berdi</div>`;
+        if (!isSilent) {
+          container.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Xatolik yuz berdi</div>`;
+        }
       }
     }
 
@@ -252,7 +265,7 @@
       if (!text) return;
       input.value = "";
 
-      const nowTime = new Date().toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+      const studentId = activeStudent ? activeStudent.id : undefined;
 
       try {
         await fetch("/api/chat/send", {
@@ -260,19 +273,54 @@
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             channel: activeChannel,
+            channelId: studentId || "group",
+            receiverId: studentId || "group",
+            studentId: studentId,
             senderId: currentUser.id,
             senderName: currentUser.fullName || "O'qituvchi",
+            senderRole: "teacher",
             text: text
           })
         });
-        loadTeacherMessages();
+        loadTeacherMessages(false);
       } catch (err) {
         console.error("Chat error:", err);
       }
     });
 
+    async function clearTeacherChat() {
+      const targetName = activeStudent ? activeStudent.fullName : "Biologiya guruhi";
+      if (!confirm(`Haqiqatan ham ${targetName} bilan barcha xabarlar tarixini tozalamoqchimisiz?`)) return;
+
+      try {
+        await fetch("/api/chat/clear", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel: activeChannel,
+            studentId: activeStudent ? activeStudent.id : undefined
+          })
+        });
+        loadTeacherMessages(false);
+      } catch (e) {
+        alert("Tozalashda xatolik");
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     loadStudentsList();
     selectTeacherChannel("group");
+
+    // Auto-poll messages every 3.5 seconds
+    setInterval(() => loadTeacherMessages(true), 3500);
   </script>
 </body>
 </html>

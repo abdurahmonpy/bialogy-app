@@ -125,6 +125,7 @@ class ChatMessageModel(Base):
     id = Column(String, primary_key=True, index=True)
     channel = Column(String, index=True)
     channelId = Column(String, nullable=True)
+    receiverId = Column(String, nullable=True)
     senderId = Column(String)
     senderName = Column(String)
     senderRole = Column(String)
@@ -138,6 +139,7 @@ class ChatMessageModel(Base):
             "id": self.id,
             "channel": self.channel,
             "channelId": self.channelId,
+            "receiverId": getattr(self, "receiverId", None) or self.channelId,
             "senderId": self.senderId,
             "senderName": self.senderName,
             "senderRole": self.senderRole,
@@ -441,6 +443,19 @@ def init_db():
                     conn.commit()
             except Exception:
                 pass
+
+    # Ensure chat_messages columns exist
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("ALTER TABLE chat_messages ADD COLUMN IF NOT EXISTS \"receiverId\" VARCHAR"))
+            conn.commit()
+    except Exception:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN \"receiverId\" VARCHAR"))
+                conn.commit()
+        except Exception:
+            pass
 
     seed_initial_data()
 

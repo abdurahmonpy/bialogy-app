@@ -159,11 +159,17 @@
       updateChannelUI();
     }
 
-    async function loadMessages() {
-      messageContainer.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Xabarlar yuklanmoqda...</div>`;
+    async function loadMessages(isSilent = false) {
+      if (!isSilent) {
+        messageContainer.innerHTML = `<div class="text-center py-6 text-slate-400 text-xs">Xabarlar yuklanmoqda...</div>`;
+      }
 
       try {
-        const res = await fetch(`/api/chat/messages?channel=${currentChannel}&userId=${currentUser?.id || 'user-stud-1'}`);
+        let url = `/api/chat/messages?channel=${currentChannel}`;
+        if (currentChannel === "teacher" && currentUser?.id) {
+          url += `&studentId=${encodeURIComponent(currentUser.id)}&userId=${encodeURIComponent(currentUser.id)}`;
+        }
+        const res = await fetch(url);
         const messages = await res.json();
 
         if (!messages || messages.length === 0) {
@@ -177,16 +183,18 @@
           return;
         }
 
+        const wasNearBottom = messageContainer.scrollHeight - messageContainer.scrollTop - messageContainer.clientHeight < 120;
+
         messageContainer.innerHTML = messages.map(m => {
-          const isMe = m.senderId === currentUser?.id || m.senderRole === "student" && m.senderName === currentUser?.fullName;
+          const isMe = m.senderId === currentUser?.id || (m.senderRole === "student" && m.senderName === currentUser?.fullName);
           
           if (isMe) {
             return `
               <div class="flex justify-end gap-2.5">
                 <div class="max-w-md bg-emerald-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm text-xs leading-relaxed">
                   <div class="font-semibold text-[10px] text-emerald-100 mb-0.5">Siz</div>
-                  <div>${m.text}</div>
-                  <div class="text-[9px] text-emerald-200 text-right mt-1">${m.time || 'Hozir'}</div>
+                  <div>${escapeHtml(m.text)}</div>
+                  <div class="text-[9px] text-emerald-200 text-right mt-1">${m.time || m.timeStr || 'Hozir'}</div>
                 </div>
               </div>
             `;
@@ -198,19 +206,23 @@
                   ${m.senderRole === 'ai' ? 'AI' : (m.senderName?.[0] || 'U')}
                 </div>
                 <div class="max-w-md bg-white border border-slate-200/80 p-3.5 rounded-2xl rounded-tl-none shadow-sm text-xs text-slate-700 leading-relaxed">
-                  <div class="font-bold text-[11px] text-slate-800 mb-0.5">${m.senderName || 'O\'qituvchi'}</div>
-                  <div class="whitespace-pre-line">${m.text}</div>
-                  <div class="text-[9px] text-slate-400 text-right mt-1">${m.time || 'Hozir'}</div>
+                  <div class="font-bold text-[11px] text-slate-800 mb-0.5">${escapeHtml(m.senderName || 'O\'qituvchi')}</div>
+                  <div class="whitespace-pre-line">${escapeHtml(m.text)}</div>
+                  <div class="text-[9px] text-slate-400 text-right mt-1">${m.time || m.timeStr || 'Hozir'}</div>
                 </div>
               </div>
             `;
           }
         }).join("");
 
-        messageContainer.scrollTop = messageContainer.scrollHeight;
+        if (!isSilent || wasNearBottom) {
+          messageContainer.scrollTop = messageContainer.scrollHeight;
+        }
         lucide.createIcons();
       } catch (err) {
-        messageContainer.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Xabarlarni yuklashda xatolik yuz berdi</div>`;
+        if (!isSilent) {
+          messageContainer.innerHTML = `<div class="text-center py-6 text-red-500 text-xs">Xabarlarni yuklashda xatolik yuz berdi</div>`;
+        }
       }
     }
 
@@ -228,75 +240,67 @@
       tempDiv.innerHTML = `
         <div class="max-w-md bg-emerald-600 text-white p-3.5 rounded-2xl rounded-tr-none shadow-sm text-xs leading-relaxed">
           <div class="font-semibold text-[10px] text-emerald-100 mb-0.5">Siz</div>
-          <div>${text}</div>
+          <div>${escapeHtml(text)}</div>
           <div class="text-[9px] text-emerald-200 text-right mt-1">${nowTime}</div>
         </div>
       `;
       messageContainer.appendChild(tempDiv);
       messageContainer.scrollTop = messageContainer.scrollHeight;
 
-      if (currentChannel === "ai") {
-        // AI response via tutor-chat
-        try {
-          const aiRes = await fetch("/api/tutor-chat", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ question: text, history: [] })
-          });
-          const aiData = await aiRes.json();
-          const aiText = aiData.answer || "Kechirasiz, savolingizni tahlil qila olmadim.";
-
-          // Save both to chat backend
-          await fetch("/api/chat/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              channel: "ai",
-              senderId: currentUser.id,
-              senderName: currentUser.fullName,
-              senderRole: "student",
-              text: text
-            })
-          });
-
-          await fetch("/api/chat/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              channel: "ai",
-              senderId: "ai-tutor",
-              senderName: "AI Repititor",
-              senderRole: "ai",
-              text: aiText
-            })
-          });
-
-          loadMessages();
-        } catch (e) {
-          console.error("AI error:", e);
-        }
-      } else {
-        // Send to backend chat API
-        try {
-          await fetch("/api/chat/send", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              channel: currentChannel,
-              senderId: currentUser.id,
-              senderName: currentUser.fullName,
-              senderRole: "student",
-              text: text
-            })
-          });
-          loadMessages();
-        } catch (e) {
-          console.error("Chat send error:", e);
-        }
+      // Send to backend chat API
+      try {
+        await fetch("/api/chat/send", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel: currentChannel,
+            channelId: currentChannel === "teacher" ? currentUser.id : "group",
+            receiverId: currentChannel === "teacher" ? "teacher" : "group",
+            studentId: currentUser.id,
+            senderId: currentUser.id,
+            senderName: currentUser.fullName,
+            senderRole: "student",
+            text: text
+          })
+        });
+        loadMessages(false);
+      } catch (e) {
+        console.error("Chat send error:", e);
       }
     });
 
+    async function clearCurrentChat() {
+      const title = currentChannel === "teacher" ? "O'qituvchi bilan suhbatingizni" : "Guruh suhbatini";
+      if (!confirm(`Haqiqatan ham ${title} tozalamoqchimisiz?`)) return;
+
+      try {
+        await fetch("/api/chat/clear", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            channel: currentChannel,
+            studentId: currentUser?.id
+          })
+        });
+        loadMessages(false);
+      } catch (e) {
+        alert("Tozalashda xatolik yuz berdi");
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
     updateChannelUI();
+
+    // Auto-poll messages every 3.5 seconds
+    setInterval(() => loadMessages(true), 3500);
   </script>
 </body>
 </html>

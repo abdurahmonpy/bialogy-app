@@ -1086,32 +1086,53 @@ async def get_homework_statistics():
 # CHAT APIS (PostgreSQL)
 # -------------------------------------------------------------
 @app.get("/api/chat/messages")
-async def get_chat_messages(channel: Optional[str] = None, channelId: Optional[str] = None, userId: Optional[str] = None):
+async def get_chat_messages(
+    channel: Optional[str] = None, 
+    channelId: Optional[str] = None, 
+    userId: Optional[str] = None,
+    studentId: Optional[str] = None
+):
     ch = channel or channelId or "teacher"
+    target_student_id = studentId or userId
+    if target_student_id in ["group", "teacher", "direct"]:
+        target_student_id = None
+
     db = SessionLocal()
     try:
         query = db.query(ChatMessageModel)
         if ch in ["teacher", "direct"]:
-            query = query.filter((ChatMessageModel.channel == "teacher") | (ChatMessageModel.channel == "direct"))
+            # Direct chat between a specific student and teacher
+            if target_student_id:
+                query = query.filter(
+                    ChatMessageModel.channel.in_(["teacher", "direct"]),
+                    (
+                        (ChatMessageModel.channelId == target_student_id) |
+                        (ChatMessageModel.receiverId == target_student_id) |
+                        (ChatMessageModel.senderId == target_student_id)
+                    )
+                )
+            else:
+                query = query.filter(ChatMessageModel.channel.in_(["teacher", "direct"]))
+        elif ch == "group":
+            query = query.filter(ChatMessageModel.channel == "group")
         else:
             query = query.filter(ChatMessageModel.channel == ch)
 
         messages = query.order_by(ChatMessageModel.timestamp.asc()).all()
         msg_list = [m.to_dict() for m in messages]
 
-        if not msg_list:
-            if ch == "group":
-                msg_list = [{
-                    "id": "starter-group",
-                    "channel": "group",
-                    "channelId": "group",
-                    "senderId": "user-teacher-1",
-                    "senderName": "Aziza Rahimova",
-                    "senderRole": "teacher",
-                    "text": "Assalomu alaykum, o'quvchilar! Guruhimizga xush kelibsiz. Bu yerda dars mavzulari va savollarni muhokama qilamiz.",
-                    "time": "09:00",
-                    "timeStr": "09:00"
-                }]
+        if not msg_list and ch == "group":
+            msg_list = [{
+                "id": "starter-group",
+                "channel": "group",
+                "channelId": "group",
+                "senderId": "user-teacher-1",
+                "senderName": "Aziza Rahimova",
+                "senderRole": "teacher",
+                "text": "Assalomu alaykum, o'quvchilar! Guruhimizga xush kelibsiz. Bu yerda dars mavzulari va savollarni muhokama qilamiz.",
+                "time": "09:00",
+                "timeStr": "09:00"
+            }]
         return msg_list
     finally:
         db.close()
@@ -1133,15 +1154,34 @@ async def send_chat_message(request: Request):
     now = int(time.time() * 1000)
     time_str = time.strftime("%H:%M")
 
+    sender_id = body.get("senderId", "user-stud-1")
+    sender_name = body.get("senderName", "Foydalanuvchi")
+    sender_role = body.get("senderRole", "student")
+    receiver_id = body.get("receiverId")
+    student_id = body.get("studentId")
+
+    # In 1-on-1 direct chat between teacher and student:
+    if ch in ["teacher", "direct"]:
+        if sender_role == "student":
+            conv_id = sender_id
+            receiver_id = receiver_id or "teacher"
+        else:
+            conv_id = receiver_id or student_id or "student"
+            receiver_id = conv_id
+    else:
+        conv_id = "group"
+        receiver_id = "group"
+
     db = SessionLocal()
     try:
         new_msg = ChatMessageModel(
             id=f"msg-{now}-{random.randint(100, 999)}",
             channel=ch,
-            channelId=ch,
-            senderId=body.get("senderId", "user-stud-1"),
-            senderName=body.get("senderName", "Jasurbek Aliyev"),
-            senderRole=body.get("senderRole", "student"),
+            channelId=conv_id,
+            receiverId=receiver_id,
+            senderId=sender_id,
+            senderName=sender_name,
+            senderRole=sender_role,
             text=text,
             timestamp=now,
             time=time_str,
@@ -1150,6 +1190,36 @@ async def send_chat_message(request: Request):
         db.add(new_msg)
         db.commit()
         return {"success": True, "message": new_msg.to_dict()}
+    finally:
+        db.close()
+
+@app.post("/api/chat/clear")
+async def clear_chat_history(request: Request):
+    body = await request.json()
+    channel = body.get("channel", "direct")
+    student_id = body.get("studentId") or body.get("userId")
+
+    db = SessionLocal()
+    try:
+        query = db.query(ChatMessageModel)
+        if channel in ["teacher", "direct"]:
+            if student_id:
+                query = query.filter(
+                    ChatMessageModel.channel.in_(["teacher", "direct"]),
+                    (
+                        (ChatMessageModel.channelId == student_id) |
+                        (ChatMessageModel.receiverId == student_id) |
+                        (ChatMessageModel.senderId == student_id)
+                    )
+                )
+            else:
+                query = query.filter(ChatMessageModel.channel.in_(["teacher", "direct"]))
+        elif channel == "group":
+            query = query.filter(ChatMessageModel.channel == "group")
+        
+        deleted = query.delete(synchronize_session=False)
+        db.commit()
+        return {"success": True, "deletedCount": deleted}
     finally:
         db.close()
 
