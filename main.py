@@ -10,9 +10,9 @@ from typing import Any, Dict, List, Optional
 import copy
 import httpx
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Request, Response, status, UploadFile, File
+from fastapi import FastAPI, HTTPException, Request, Response, status, UploadFile, File, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm.attributes import flag_modified
 
@@ -21,7 +21,7 @@ from database import (
     init_db, SessionLocal,
     UserModel, GroupModel, HomeworkModel,
     ChatMessageModel, SubmissionModel, TeacherTestModel,
-    ResourceModel
+    ResourceModel, LiveTestSessionModel, LiveParticipantModel
 )
 from email_service import notify_students_new_homework, notify_student_homework_graded
 
@@ -58,8 +58,16 @@ app.add_middleware(
 async def enforce_auth_and_access_control(request: Request, call_next):
     path = request.url.path
 
-    # Allow static assets, uploads and public auth endpoints
-    is_public = path.startswith("/static") or path.startswith("/uploads") or path == "/favicon.ico" or path in ["/api/auth/login", "/api/auth/register", "/api/auth/me", "/api/upload"]
+    # Allow static assets, uploads and public auth / live test endpoints
+    is_public = (
+        path.startswith("/static") or
+        path.startswith("/uploads") or
+        path == "/favicon.ico" or
+        path in ["/api/auth/login", "/api/auth/register", "/api/auth/me", "/api/upload"] or
+        path.startswith("/api/live-test/session/") or
+        path.startswith("/api/live-test/join") or
+        path.startswith("/ws/")
+    )
 
     if not is_public:
         user_id = request.headers.get("X-User-Id")
@@ -1220,7 +1228,7 @@ async def create_submission(request: Request):
         db.close()
 
 # -------------------------------------------------------------
-# TEACHER TESTS APIS (PostgreSQL)
+# TEACHER TESTS APIS (PostgreSQL / SQLite)
 # -------------------------------------------------------------
 @app.get("/api/teacher-tests")
 async def get_teacher_tests():
@@ -1231,25 +1239,63 @@ async def get_teacher_tests():
     finally:
         db.close()
 
+@app.get("/api/teacher-tests/{test_id}")
+async def get_single_teacher_test(test_id: str):
+    db = SessionLocal()
+    try:
+        test = db.query(TeacherTestModel).filter(TeacherTestModel.id == test_id).first()
+        if not test:
+            raise HTTPException(status_code=404, detail="Test topilmadi")
+        return test.to_dict()
+    finally:
+        db.close()
+
 @app.post("/api/teacher-tests")
 async def save_teacher_test(request: Request):
     body = await request.json()
     topic = body.get("topic")
-    levels = body.get("levels")
+    questions = body.get("questions") or []
+    levels = body.get("levels") or []
 
-    if not topic or not levels:
-        raise HTTPException(status_code=400, detail="Mavzu va bosqichlar to'liq kiritilishi shart")
+    if not topic:
+        raise HTTPException(status_code=400, detail="Mavzu kiritilishi shart")
+
+    if not questions and not levels:
+        raise HTTPException(status_code=400, detail="Test savollari yoki bosqichlari kiritilishi shart")
+
+    # If levels are given but not questions, flatten levels into questions
+    if levels and not questions:
+        for lvl in levels:
+            diff = lvl.get("difficulty", "O'rtacha")
+            for q in lvl.get("questions", []):
+                q_copy = dict(q)
+                q_copy["difficulty"] = diff
+                questions.append(q_copy)
+
+    # If questions given without levels, create 3-tier levels for backward compatibility
+    if questions and not levels:
+        n = len(questions)
+        part = max(n // 3, 1)
+        levels = [
+            {"difficulty": "Oson", "title": "1-bosqich: Boshlang'ich", "questions": questions[:part]},
+            {"difficulty": "O'rtacha", "title": "2-bosqich: O'rta", "questions": questions[part:part*2]},
+            {"difficulty": "Qiyin", "title": "3-bosqich: DTM darajasi", "questions": questions[part*2:]}
+        ]
 
     db = SessionLocal()
     try:
         now = int(time.time() * 1000)
-        test_id = body.get("id") or f"topic-{now}"
+        test_id = body.get("id") or f"test-{now}"
         existing = db.query(TeacherTestModel).filter(TeacherTestModel.id == test_id).first()
         if existing:
             existing.topic = topic
+            existing.subject = body.get("subject", existing.subject)
+            existing.classGrade = body.get("classGrade", existing.classGrade)
+            existing.description = body.get("description", existing.description)
+            existing.category = body.get("category", existing.category or "Mavzulashtirilgan")
+            existing.tags = body.get("tags", existing.tags or [])
+            existing.questions = questions
             existing.levels = levels
-            existing.classGrade = body.get("classGrade") or existing.classGrade
-            existing.description = body.get("description") or existing.description
             db.commit()
             return {"success": True, "test": existing.to_dict()}
 
@@ -1258,14 +1304,48 @@ async def save_teacher_test(request: Request):
             subject=body.get("subject", "Biologiya"),
             topic=topic,
             classGrade=body.get("classGrade", "8-sinf"),
-            description=body.get("description", "3-bosqichli bilim sinovi"),
-            teacherName=body.get("teacherName", "Aziza Rahimova"),
-            createdAt=now,
-            levels=levels
+            description=body.get("description", "Jonli va bosqichli test sinovi"),
+            teacherName=body.get("teacherName", "Ustoz"),
+            category=body.get("category", "Mavzulashtirilgan"),
+            tags=body.get("tags", []),
+            questions=questions,
+            levels=levels,
+            createdAt=now
         )
         db.add(new_test)
         db.commit()
+        db.refresh(new_test)
         return {"success": True, "test": new_test.to_dict()}
+    finally:
+        db.close()
+
+@app.post("/api/teacher-tests/{test_id}/duplicate")
+async def duplicate_teacher_test(test_id: str):
+    db = SessionLocal()
+    try:
+        t = db.query(TeacherTestModel).filter(TeacherTestModel.id == test_id).first()
+        if not t:
+            raise HTTPException(status_code=404, detail="Test topilmadi")
+
+        now = int(time.time() * 1000)
+        cloned_id = f"test-{now}"
+        cloned_test = TeacherTestModel(
+            id=cloned_id,
+            subject=t.subject,
+            topic=f"{t.topic} (Nusxa)",
+            classGrade=t.classGrade,
+            description=t.description,
+            teacherName=t.teacherName,
+            category=t.category,
+            tags=copy.deepcopy(t.tags or []),
+            questions=copy.deepcopy(t.questions or []),
+            levels=copy.deepcopy(t.levels or []),
+            createdAt=now
+        )
+        db.add(cloned_test)
+        db.commit()
+        db.refresh(cloned_test)
+        return {"success": True, "test": cloned_test.to_dict()}
     finally:
         db.close()
 
@@ -1278,6 +1358,932 @@ async def delete_teacher_test(test_id: str):
             db.delete(t)
             db.commit()
         return {"success": True}
+    finally:
+        db.close()
+
+# -------------------------------------------------------------
+# LIVE KAHOOT-STYLE TEST SYSTEM (WebSockets & REST APIs)
+# -------------------------------------------------------------
+class LiveTestConnectionManager:
+    def __init__(self):
+        # sessionId -> list of active WebSocket connections
+        self.active_connections: Dict[str, List[WebSocket]] = {}
+
+    async def connect(self, websocket: WebSocket, session_id: str):
+        await websocket.accept()
+        if session_id not in self.active_connections:
+            self.active_connections[session_id] = []
+        self.active_connections[session_id].append(websocket)
+
+    def disconnect(self, websocket: WebSocket, session_id: str):
+        if session_id in self.active_connections:
+            if websocket in self.active_connections[session_id]:
+                self.active_connections[session_id].remove(websocket)
+            if not self.active_connections[session_id]:
+                del self.active_connections[session_id]
+
+    async def broadcast(self, session_id: str, message: dict):
+        if session_id in self.active_connections:
+            for connection in list(self.active_connections[session_id]):
+                try:
+                    await connection.send_json(message)
+                except Exception:
+                    pass
+
+live_test_manager = LiveTestConnectionManager()
+
+@app.websocket("/ws/live-test/{session_id}")
+async def websocket_live_test_endpoint(websocket: WebSocket, session_id: str):
+    await live_test_manager.connect(websocket, session_id)
+    db = SessionLocal()
+    try:
+        while True:
+            data = await websocket.receive_json()
+            event_type = data.get("type")
+
+            if event_type == "ping":
+                await websocket.send_json({"type": "pong", "time": int(time.time() * 1000)})
+
+            elif event_type == "join_lobby":
+                student_id = data.get("studentId")
+                student_name = data.get("studentName")
+                # Broadcast participant count update
+                parts = db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session_id).all()
+                await live_test_manager.broadcast(session_id, {
+                    "type": "lobby_update",
+                    "participantCount": len(parts),
+                    "participants": [p.to_dict() for p in parts]
+                })
+
+            elif event_type == "start_test":
+                session = db.query(LiveTestSessionModel).filter(LiveTestSessionModel.id == session_id).first()
+                if session and session.status == "lobby":
+                    now = int(time.time() * 1000)
+                    total_min = session.settings.get("totalTimeLimit", 15) if session.settings else 15
+                    session.status = "active"
+                    session.startTime = now
+                    session.endTime = now + (total_min * 60 * 1000)
+                    db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session_id).update({
+                        LiveParticipantModel.status: "in_progress"
+                    })
+                    db.commit()
+                    await live_test_manager.broadcast(session_id, {
+                        "type": "test_started",
+                        "startTime": session.startTime,
+                        "endTime": session.endTime,
+                        "settings": session.settings or {}
+                    })
+
+            elif event_type == "submit_answer":
+                part_id = data.get("participantId")
+                q_id = str(data.get("questionId"))
+                student_ans = data.get("answer")
+                time_spent = data.get("timeSpentMs", 0)
+
+                part = db.query(LiveParticipantModel).filter(LiveParticipantModel.id == part_id).first()
+                session = db.query(LiveTestSessionModel).filter(LiveTestSessionModel.id == session_id).first()
+                if part and session:
+                    questions = session.questions or []
+                    target_q = next((q for q in questions if str(q.get("id")) == q_id), None)
+                    is_correct = False
+                    earned_points = 0
+                    if target_q:
+                        correct_val = target_q.get("correctAnswer")
+                        q_type = target_q.get("type", "single_choice")
+                        base_pts = target_q.get("points", 1000)
+
+                        if q_type in ["single_choice", "true_false"]:
+                            is_correct = str(student_ans).strip().lower() == str(correct_val).strip().lower()
+                        elif q_type == "multiple_choice":
+                            if isinstance(student_ans, list) and isinstance(correct_val, list):
+                                is_correct = set(str(x) for x in student_ans) == set(str(x) for x in correct_val)
+                        elif q_type == "short_answer":
+                            is_correct = str(student_ans or "").strip().lower() == str(correct_val or "").strip().lower()
+
+                        if is_correct:
+                            speed_scoring = session.settings.get("speedScoring", True) if session.settings else True
+                            if speed_scoring:
+                                per_q_sec = (session.settings.get("perQuestionTime") or 30) if session.settings else 30
+                                max_ms = per_q_sec * 1000
+                                ratio = max(0.0, min(1.0, 1.0 - (time_spent / max(max_ms, 1))))
+                                earned_points = int(base_pts * (0.5 + 0.5 * ratio))
+                            else:
+                                earned_points = base_pts
+
+                    ans_dict = dict(part.answers or {})
+                    ans_dict[q_id] = {
+                        "answer": student_ans,
+                        "isCorrect": is_correct,
+                        "pointsEarned": earned_points,
+                        "timeSpentMs": time_spent
+                    }
+                    part.answers = ans_dict
+                    flag_modified(part, "answers")
+                    part.score = sum(a.get("pointsEarned", 0) for a in ans_dict.values())
+                    part.correctCount = sum(1 for a in ans_dict.values() if a.get("isCorrect"))
+                    part.incorrectCount = sum(1 for a in ans_dict.values() if not a.get("isCorrect"))
+                    part.totalAnswered = len(ans_dict)
+                    part.currentQuestionIndex = min(part.totalAnswered, len(questions) - 1)
+                    part.lastActiveAt = int(time.time() * 1000)
+
+                    if part.totalAnswered >= len(questions):
+                        part.status = "submitted"
+                        part.finishedAt = int(time.time() * 1000)
+
+                    db.commit()
+
+                    # Compute live leaderboard
+                    all_parts = db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session_id).all()
+                    sorted_parts = sorted(all_parts, key=lambda p: (p.score or 0), reverse=True)
+                    leaderboard = [
+                        {
+                            "id": p.id,
+                            "studentName": p.studentName,
+                            "score": p.score,
+                            "rank": idx + 1,
+                            "correctCount": p.correctCount,
+                            "totalAnswered": p.totalAnswered,
+                            "status": p.status
+                        }
+                        for idx, p in enumerate(sorted_parts[:10])
+                    ]
+
+                    # Broadcast progress and leaderboard to all listeners
+                    await live_test_manager.broadcast(session_id, {
+                        "type": "progress_update",
+                        "participant": part.to_dict(),
+                        "leaderboard": leaderboard
+                    })
+
+            elif event_type == "cheat_log":
+                part_id = data.get("participantId")
+                cheat_type = data.get("cheatType", "tab_switch")
+                part = db.query(LiveParticipantModel).filter(LiveParticipantModel.id == part_id).first()
+                if part:
+                    part.cheatCount = (part.cheatCount or 0) + 1
+                    logs = list(part.cheatLogs or [])
+                    logs.append({
+                        "type": cheat_type,
+                        "time": int(time.time() * 1000),
+                        "count": part.cheatCount
+                    })
+                    part.cheatLogs = logs
+                    flag_modified(part, "cheatLogs")
+                    db.commit()
+                    await live_test_manager.broadcast(session_id, {
+                        "type": "cheat_alert",
+                        "participantId": part.id,
+                        "studentName": part.studentName,
+                        "cheatType": cheat_type,
+                        "cheatCount": part.cheatCount
+                    })
+
+    except WebSocketDisconnect:
+        live_test_manager.disconnect(websocket, session_id)
+    except Exception as ws_err:
+        print("Live test WS error:", ws_err)
+        live_test_manager.disconnect(websocket, session_id)
+    finally:
+        db.close()
+
+# -------------------------------------------------------------
+# LIVE TEST REST APIS
+# -------------------------------------------------------------
+@app.post("/api/live-test/create-session")
+async def create_live_session(request: Request):
+    user_role = request.headers.get("X-User-Role")
+    user_id = request.headers.get("X-User-Id")
+    if user_role == "student":
+        raise HTTPException(status_code=403, detail="Faqat o'qituvchilar jonli test boshlashi mumkin.")
+
+    body = await request.json()
+    test_id = body.get("testId")
+    group_id = body.get("groupId") # "all" or group ID
+    settings = body.get("settings") or {}
+
+    if not test_id:
+        raise HTTPException(status_code=400, detail="Test ID kiritilishi shart")
+
+    db = SessionLocal()
+    try:
+        test = db.query(TeacherTestModel).filter(TeacherTestModel.id == test_id).first() if test_id else None
+        test_title = body.get("title") or body.get("testTitle") or "Biologiya Jonli Testi"
+        subject = "Biologiya"
+        class_grade = ""
+        teacher_name_default = "Ustoz"
+        raw_qs = []
+
+        if test:
+            test_title = test.topic
+            subject = test.subject or "Biologiya"
+            class_grade = test.classGrade or ""
+            teacher_name_default = test.teacherName or "Ustoz"
+            raw_qs = test.questions or []
+            if not raw_qs and test.levels:
+                for lvl in test.levels:
+                    diff = lvl.get("difficulty", "O'rtacha")
+                    for q in lvl.get("questions", []):
+                        item = dict(q)
+                        item["difficulty"] = diff
+                        raw_qs.append(item)
+        elif body.get("questions"):
+            raw_qs = body.get("questions") or []
+        else:
+            raise HTTPException(status_code=404, detail="Test bazada topilmadi va savollar berilmagan")
+
+        group_name = "Barcha o'quvchilar"
+        if group_id and group_id != "all":
+            grp = db.query(GroupModel).filter(GroupModel.id == group_id).first()
+            if grp:
+                group_name = grp.name
+
+        # Generate unique 6-digit join code
+        join_code = ""
+        for _ in range(20):
+            cand = str(random.randint(100000, 999999))
+            active_existing = db.query(LiveTestSessionModel).filter(
+                LiveTestSessionModel.code == cand,
+                LiveTestSessionModel.status.in_(["lobby", "active", "paused"])
+            ).first()
+            if not active_existing:
+                join_code = cand
+                break
+        if not join_code:
+            join_code = str(int(time.time()))[-6:]
+
+        now = int(time.time() * 1000)
+        session_id = f"live-{now}-{join_code}"
+
+        # Extract normalized questions list
+        norm_questions = []
+        if raw_qs:
+            norm_questions = copy.deepcopy(raw_qs)
+
+        # Ensure question properties
+        for idx, q in enumerate(norm_questions):
+            if "id" not in q:
+                q["id"] = idx + 1
+            if "points" not in q:
+                q["points"] = 1000
+            if "type" not in q:
+                q["type"] = "single_choice"
+
+        teacher_user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        t_name = teacher_user.fullName if teacher_user else teacher_name_default
+
+        new_session = LiveTestSessionModel(
+            id=session_id,
+            code=join_code,
+            testId=test.id if test else (test_id or session_id),
+            testTitle=test_title,
+            subject=subject,
+            classGrade=class_grade,
+            teacherId=user_id or "teacher-1",
+            teacherName=t_name,
+            groupId=group_id or "all",
+            groupName=group_name,
+            status="lobby",
+            settings=settings,
+            questions=norm_questions,
+            startTime=0,
+            endTime=0,
+            pausedAt=0,
+            totalPausedDuration=0,
+            timeExtendedSeconds=0,
+            createdAt=now
+        )
+        db.add(new_session)
+        db.commit()
+        db.refresh(new_session)
+
+        return {
+            "success": True,
+            "session": new_session.to_dict(),
+            "code": join_code,
+            "joinUrl": f"/student/live-test.html?code={join_code}",
+            "teacherUrl": f"/teacher/live-test.html?sessionId={session_id}"
+        }
+    finally:
+        db.close()
+
+@app.get("/api/live-test/session/{code_or_id}")
+async def get_live_session_info(code_or_id: str, request: Request):
+    db = SessionLocal()
+    try:
+        session = db.query(LiveTestSessionModel).filter(
+            (LiveTestSessionModel.code == code_or_id) | (LiveTestSessionModel.id == code_or_id)
+        ).first()
+
+        if not session:
+            raise HTTPException(status_code=404, detail="Jonli test sessiyasi topilmadi. Kodni qayta tekshiring.")
+
+        # If user is teacher, send full questions. If student in lobby, omit answers
+        user_role = request.headers.get("X-User-Role")
+        session_data = session.to_dict()
+
+        if user_role != "teacher" and session.status == "lobby":
+            # Strip correct answers and question details in lobby to prevent early leak
+            session_data["questions"] = []
+
+        # Also get participant count
+        part_count = db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session.id).count()
+        session_data["participantCount"] = part_count
+
+        return {"success": True, "session": session_data}
+    finally:
+        db.close()
+
+@app.post("/api/live-test/join")
+async def join_live_session(request: Request):
+    body = await request.json()
+    code = (body.get("code") or "").strip()
+    student_id = body.get("studentId")
+    student_name = (body.get("studentName") or "").strip()
+    is_guest = bool(body.get("isGuest", False))
+
+    if not code:
+        raise HTTPException(status_code=400, detail="6 xonali test kodi kiritilishi shart")
+
+    db = SessionLocal()
+    try:
+        session = db.query(LiveTestSessionModel).filter(LiveTestSessionModel.code == code).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Bunday kodli jonli test topilmadi.")
+
+        if session.status == "finished":
+            raise HTTPException(status_code=400, detail="Ushbu test allaqachon yakunlangan.")
+
+        # Check group permission if group restricted
+        if session.groupId and session.groupId != "all":
+            if student_id and not is_guest:
+                user = db.query(UserModel).filter(UserModel.id == student_id).first()
+                if user and user.groupId and user.groupId != session.groupId:
+                    raise HTTPException(
+                        status_code=403,
+                        detail=f"Ushbu test faqat '{session.groupName}' guruhi o'quvchilari uchun mo'ljallangan."
+                    )
+
+        if not student_name:
+            if student_id:
+                user = db.query(UserModel).filter(UserModel.id == student_id).first()
+                student_name = user.fullName if user else "O'quvchi"
+            else:
+                student_name = "Mehmon o'quvchi"
+
+        if not student_id:
+            student_id = f"guest-{int(time.time()*1000)}-{random.randint(100,999)}"
+            is_guest = True
+
+        part_id = f"part-{session.id}-{student_id}"
+        part = db.query(LiveParticipantModel).filter(LiveParticipantModel.id == part_id).first()
+
+        now = int(time.time() * 1000)
+        if not part:
+            part = LiveParticipantModel(
+                id=part_id,
+                sessionId=session.id,
+                studentId=student_id,
+                studentName=student_name,
+                isGuest=1 if is_guest else 0,
+                isOnline=1,
+                currentQuestionIndex=0,
+                score=0,
+                correctCount=0,
+                incorrectCount=0,
+                totalAnswered=0,
+                answers={},
+                cheatLogs=[],
+                cheatCount=0,
+                status="lobby" if session.status == "lobby" else "in_progress",
+                joinedAt=now,
+                finishedAt=0,
+                lastActiveAt=now
+            )
+            db.add(part)
+            db.commit()
+            db.refresh(part)
+        else:
+            part.isOnline = 1
+            part.lastActiveAt = now
+            db.commit()
+
+        # Notify lobby via WebSocket
+        all_parts = db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session.id).all()
+        await live_test_manager.broadcast(session.id, {
+            "type": "lobby_update",
+            "participantCount": len(all_parts),
+            "participants": [p.to_dict() for p in all_parts]
+        })
+
+        # Prepare questions for student: if shuffle enabled, randomize order
+        questions = copy.deepcopy(session.questions or [])
+        if session.settings and session.settings.get("shuffleQuestions", True):
+            # Seed with participant ID so reconnect preserves exact order
+            random.Random(student_id).shuffle(questions)
+
+        if session.settings and session.settings.get("shuffleOptions", True):
+            for q in questions:
+                if q.get("type") in ["single_choice", "multiple_choice"] and isinstance(q.get("options"), list):
+                    opts = list(q.get("options"))
+                    random.Random(student_id + str(q.get("id"))).shuffle(opts)
+                    q["options"] = opts
+
+        # Strip internal correct answers from payload sent to student runner
+        student_safe_questions = []
+        for q in questions:
+            item = dict(q)
+            item.pop("correctAnswer", None)
+            item.pop("explanation", None)
+            student_safe_questions.append(item)
+
+        return {
+            "success": True,
+            "session": session.to_dict(),
+            "participant": part.to_dict(),
+            "questions": student_safe_questions,
+            "totalQuestions": len(student_safe_questions)
+        }
+    finally:
+        db.close()
+
+@app.get("/api/live-test/session/{session_id}/monitor")
+async def get_live_monitor_data(session_id: str, request: Request):
+    user_role = request.headers.get("X-User-Role")
+    if user_role == "student":
+        raise HTTPException(status_code=403, detail="Faqat o'qituvchi kuzatuv paneliga kirishi mumkin.")
+
+    db = SessionLocal()
+    try:
+        session = db.query(LiveTestSessionModel).filter(LiveTestSessionModel.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessiya topilmadi")
+
+        participants = db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session_id).all()
+        questions = session.questions or []
+        total_q = max(len(questions), 1)
+
+        # Student progress list
+        student_rows = []
+        question_mistakes: Dict[str, int] = {str(q.get("id")): 0 for q in questions}
+
+        for p in participants:
+            ans = p.answers or {}
+            progress_pct = round((len(ans) / total_q) * 100)
+            acc_pct = round((p.correctCount / max(len(ans), 1)) * 100) if ans else 0
+
+            # Track which questions were wrong
+            wrong_q_ids = []
+            for q_id_key, a_val in ans.items():
+                if not a_val.get("isCorrect"):
+                    wrong_q_ids.append(q_id_key)
+                    question_mistakes[q_id_key] = question_mistakes.get(q_id_key, 0) + 1
+
+            student_rows.append({
+                "id": p.id,
+                "studentId": p.studentId,
+                "studentName": p.studentName,
+                "isOnline": bool(p.isOnline),
+                "currentQuestionIndex": p.currentQuestionIndex,
+                "score": p.score,
+                "correctCount": p.correctCount,
+                "incorrectCount": p.incorrectCount,
+                "totalAnswered": len(ans),
+                "progressPct": progress_pct,
+                "accuracyPct": acc_pct,
+                "wrongQuestions": wrong_q_ids,
+                "cheatCount": p.cheatCount or 0,
+                "status": p.status,
+                "lastActiveAt": p.lastActiveAt
+            })
+
+        # Calculate group summary
+        avg_score = round(sum(r["score"] for r in student_rows) / max(len(student_rows), 1)) if student_rows else 0
+        avg_acc = round(sum(r["accuracyPct"] for r in student_rows) / max(len(student_rows), 1)) if student_rows else 0
+        finished_count = sum(1 for r in student_rows if r["status"] in ["submitted", "timed_out"])
+        completion_rate = round((finished_count / max(len(student_rows), 1)) * 100) if student_rows else 0
+
+        # Find hardest question
+        hardest_q = None
+        if question_mistakes:
+            sorted_mistakes = sorted(question_mistakes.items(), key=lambda x: x[1], reverse=True)
+            top_wrong_id, top_wrong_count = sorted_mistakes[0]
+            if top_wrong_count > 0:
+                matching_q = next((q for q in questions if str(q.get("id")) == top_wrong_id), None)
+                if matching_q:
+                    hardest_q = {
+                        "id": top_wrong_id,
+                        "question": matching_q.get("question"),
+                        "wrongCount": top_wrong_count
+                    }
+
+        # Leaderboard
+        sorted_leaderboard = sorted(student_rows, key=lambda r: (r["score"], -r["cheatCount"]), reverse=True)
+        for idx, item in enumerate(sorted_leaderboard):
+            item["rank"] = idx + 1
+
+        return {
+            "success": True,
+            "session": session.to_dict(),
+            "participants": sorted_leaderboard,
+            "totalParticipants": len(student_rows),
+            "onlineCount": sum(1 for r in student_rows if r["isOnline"]),
+            "summary": {
+                "averageScore": avg_score,
+                "averageAccuracy": avg_acc,
+                "completionRate": completion_rate,
+                "finishedCount": finished_count,
+                "hardestQuestion": hardest_q
+            },
+            "leaderboard": sorted_leaderboard[:10]
+        }
+    finally:
+        db.close()
+
+@app.post("/api/live-test/session/{session_id}/action")
+async def handle_live_session_action(session_id: str, request: Request):
+    user_role = request.headers.get("X-User-Role")
+    if user_role == "student":
+        raise HTTPException(status_code=403, detail="Ruxsat berilmagan.")
+
+    body = await request.json()
+    action = body.get("action")
+
+    db = SessionLocal()
+    try:
+        session = db.query(LiveTestSessionModel).filter(LiveTestSessionModel.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessiya topilmadi")
+
+        now = int(time.time() * 1000)
+
+        if action == "start":
+            total_min = session.settings.get("totalTimeLimit", 15) if session.settings else 15
+            session.status = "active"
+            session.startTime = now
+            session.endTime = now + (total_min * 60 * 1000)
+            db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session_id).update({
+                LiveParticipantModel.status: "in_progress"
+            })
+            db.commit()
+            await live_test_manager.broadcast(session_id, {
+                "type": "test_started",
+                "startTime": session.startTime,
+                "endTime": session.endTime,
+                "settings": session.settings or {}
+            })
+
+        elif action == "pause":
+            session.status = "paused"
+            session.pausedAt = now
+            db.commit()
+            await live_test_manager.broadcast(session_id, {
+                "type": "test_paused",
+                "message": "Ustoz testni vaqtincha to'xtatdi."
+            })
+
+        elif action == "resume":
+            if session.pausedAt > 0:
+                paused_dur = now - session.pausedAt
+                session.totalPausedDuration = (session.totalPausedDuration or 0) + int(paused_dur / 1000)
+                session.endTime = session.endTime + paused_dur
+            session.status = "active"
+            session.pausedAt = 0
+            db.commit()
+            await live_test_manager.broadcast(session_id, {
+                "type": "test_resumed",
+                "newEndTime": session.endTime
+            })
+
+        elif action == "extend_time":
+            add_sec = int(body.get("seconds", 300)) # default 5 minutes
+            session.endTime = session.endTime + (add_sec * 1000)
+            session.timeExtendedSeconds = (session.timeExtendedSeconds or 0) + add_sec
+            db.commit()
+            await live_test_manager.broadcast(session_id, {
+                "type": "time_extended",
+                "additionalSeconds": add_sec,
+                "newEndTime": session.endTime
+            })
+
+        elif action == "end":
+            session.status = "finished"
+            # Auto-submit all participants
+            db.query(LiveParticipantModel).filter(
+                LiveParticipantModel.sessionId == session_id,
+                LiveParticipantModel.status.in_(["lobby", "in_progress"])
+            ).update({
+                LiveParticipantModel.status: "submitted",
+                LiveParticipantModel.finishedAt: now
+            })
+            db.commit()
+            await live_test_manager.broadcast(session_id, {
+                "type": "test_ended",
+                "message": "Test ustoz tomonidan yakunlandi."
+            })
+
+        elif action == "toggle_show_results":
+            st = dict(session.settings or {})
+            curr = st.get("showResultsToStudents", True)
+            st["showResultsToStudents"] = not curr
+            session.settings = st
+            flag_modified(session, "settings")
+            db.commit()
+            await live_test_manager.broadcast(session_id, {
+                "type": "settings_updated",
+                "settings": session.settings
+            })
+
+        return {"success": True, "session": session.to_dict()}
+    finally:
+        db.close()
+
+@app.post("/api/live-test/session/{session_id}/submit")
+async def submit_live_test_answer(session_id: str, request: Request):
+    body = await request.json()
+    part_id = body.get("participantId")
+    q_id = str(body.get("questionId"))
+    student_ans = body.get("answer")
+    time_spent = body.get("timeSpentMs", 0)
+
+    db = SessionLocal()
+    try:
+        part = db.query(LiveParticipantModel).filter(LiveParticipantModel.id == part_id).first()
+        session = db.query(LiveTestSessionModel).filter(LiveTestSessionModel.id == session_id).first()
+
+        if not part or not session:
+            raise HTTPException(status_code=404, detail="Qatnashuvchi yoki sessiya topilmadi")
+
+        questions = session.questions or []
+        target_q = next((q for q in questions if str(q.get("id")) == q_id), None)
+        is_correct = False
+        earned_points = 0
+
+        if target_q:
+            correct_val = target_q.get("correctAnswer")
+            q_type = target_q.get("type", "single_choice")
+            base_pts = target_q.get("points", 1000)
+
+            if q_type in ["single_choice", "true_false"]:
+                is_correct = str(student_ans).strip().lower() == str(correct_val).strip().lower()
+            elif q_type == "multiple_choice":
+                if isinstance(student_ans, list) and isinstance(correct_val, list):
+                    is_correct = set(str(x) for x in student_ans) == set(str(x) for x in correct_val)
+            elif q_type == "short_answer":
+                is_correct = str(student_ans or "").strip().lower() == str(correct_val or "").strip().lower()
+
+            if is_correct:
+                speed_scoring = session.settings.get("speedScoring", True) if session.settings else True
+                if speed_scoring:
+                    per_q_sec = (session.settings.get("perQuestionTime") or 30) if session.settings else 30
+                    max_ms = per_q_sec * 1000
+                    ratio = max(0.0, min(1.0, 1.0 - (time_spent / max(max_ms, 1))))
+                    earned_points = int(base_pts * (0.5 + 0.5 * ratio))
+                else:
+                    earned_points = base_pts
+
+        ans_dict = dict(part.answers or {})
+        ans_dict[q_id] = {
+            "answer": student_ans,
+            "isCorrect": is_correct,
+            "pointsEarned": earned_points,
+            "timeSpentMs": time_spent
+        }
+        part.answers = ans_dict
+        flag_modified(part, "answers")
+        part.score = sum(a.get("pointsEarned", 0) for a in ans_dict.values())
+        part.correctCount = sum(1 for a in ans_dict.values() if a.get("isCorrect"))
+        part.incorrectCount = sum(1 for a in ans_dict.values() if not a.get("isCorrect"))
+        part.totalAnswered = len(ans_dict)
+        part.currentQuestionIndex = min(part.totalAnswered, len(questions) - 1)
+        part.lastActiveAt = int(time.time() * 1000)
+
+        if part.totalAnswered >= len(questions):
+            part.status = "submitted"
+            part.finishedAt = int(time.time() * 1000)
+
+        db.commit()
+
+        # Broadcast progress
+        await live_test_manager.broadcast(session.id, {
+            "type": "progress_update",
+            "participant": part.to_dict()
+        })
+
+        return {
+            "success": True,
+            "isCorrect": is_correct,
+            "earnedPoints": earned_points,
+            "totalScore": part.score,
+            "isFinished": part.status == "submitted"
+        }
+    finally:
+        db.close()
+
+@app.post("/api/live-test/session/{session_id}/cheat-log")
+async def record_cheat_log(session_id: str, request: Request):
+    body = await request.json()
+    part_id = body.get("participantId")
+    cheat_type = body.get("cheatType", "tab_switch")
+
+    db = SessionLocal()
+    try:
+        part = db.query(LiveParticipantModel).filter(LiveParticipantModel.id == part_id).first()
+        if part:
+            part.cheatCount = (part.cheatCount or 0) + 1
+            logs = list(part.cheatLogs or [])
+            logs.append({
+                "type": cheat_type,
+                "time": int(time.time() * 1000),
+                "count": part.cheatCount
+            })
+            part.cheatLogs = logs
+            flag_modified(part, "cheatLogs")
+            db.commit()
+
+            await live_test_manager.broadcast(session_id, {
+                "type": "cheat_alert",
+                "participantId": part.id,
+                "studentName": part.studentName,
+                "cheatType": cheat_type,
+                "cheatCount": part.cheatCount
+            })
+        return {"success": True}
+    finally:
+        db.close()
+
+@app.get("/api/live-test/session/{session_id}/results")
+async def get_live_test_results(session_id: str, request: Request):
+    db = SessionLocal()
+    try:
+        session = db.query(LiveTestSessionModel).filter(LiveTestSessionModel.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessiya topilmadi")
+
+        participants = db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session_id).all()
+        questions = session.questions or []
+        total_q = max(len(questions), 1)
+
+        # Ranked list
+        sorted_parts = sorted(participants, key=lambda p: (p.score or 0), reverse=True)
+        ranked_list = []
+        for idx, p in enumerate(sorted_parts):
+            p_dict = p.to_dict()
+            p_dict["rank"] = idx + 1
+            p_dict["accuracyPct"] = round((p.correctCount / max(p.totalAnswered, 1)) * 100) if p.totalAnswered else 0
+            ranked_list.append(p_dict)
+
+        # Question statistics breakdown
+        q_stats = []
+        for q in questions:
+            q_id_str = str(q.get("id"))
+            total_attempts = 0
+            correct_attempts = 0
+            for p in participants:
+                ans = (p.answers or {}).get(q_id_str)
+                if ans:
+                    total_attempts += 1
+                    if ans.get("isCorrect"):
+                        correct_attempts += 1
+
+            pct = round((correct_attempts / max(total_attempts, 1)) * 100) if total_attempts else 0
+            q_stats.append({
+                "id": q_id_str,
+                "question": q.get("question"),
+                "type": q.get("type", "single_choice"),
+                "totalAttempts": total_attempts,
+                "correctAttempts": correct_attempts,
+                "accuracyPct": pct,
+                "options": q.get("options", []),
+                "correctAnswer": q.get("correctAnswer"),
+                "explanation": q.get("explanation")
+            })
+
+        return {
+            "success": True,
+            "session": session.to_dict(),
+            "participants": ranked_list,
+            "totalParticipants": len(ranked_list),
+            "questions": q_stats,
+            "summary": {
+                "averageScore": round(sum(p["score"] for p in ranked_list) / max(len(ranked_list), 1)) if ranked_list else 0,
+                "averageAccuracy": round(sum(p["accuracyPct"] for p in ranked_list) / max(len(ranked_list), 1)) if ranked_list else 0,
+                "topStudent": ranked_list[0] if ranked_list else None
+            }
+        }
+    finally:
+        db.close()
+
+@app.get("/api/live-test/session/{session_id}/export-csv")
+async def export_live_test_csv(session_id: str):
+    db = SessionLocal()
+    try:
+        session = db.query(LiveTestSessionModel).filter(LiveTestSessionModel.id == session_id).first()
+        if not session:
+            raise HTTPException(status_code=404, detail="Sessiya topilmadi")
+
+        participants = db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == session_id).all()
+        sorted_parts = sorted(participants, key=lambda p: (p.score or 0), reverse=True)
+        questions = session.questions or []
+
+        # Build CSV with UTF-8 BOM (\ufeff)
+        lines = [
+            "\ufeff" + f"Jonli Test Hisoboti: {session.testTitle}",
+            f"Guruh: {session.groupName}, Sana: {time.strftime('%Y-%m-%d %H:%M', time.localtime(session.createdAt / 1000))}",
+            ""
+        ]
+
+        # Header row
+        header = ["O'rin", "O'quvchi F.I.Sh.", "To'plangan Ball", "To'g'ri", "Noto'g'ri", "Jami Yechilgan", "Aniqlik (%)", "Qoidabuzarliklar", "Holat"]
+        for idx, q in enumerate(questions):
+            header.append(f"Savol {idx+1}")
+        lines.append('"' + '","'.join(header) + '"')
+
+        # Data rows
+        for idx, p in enumerate(sorted_parts):
+            acc_pct = round((p.correctCount / max(p.totalAnswered, 1)) * 100) if p.totalAnswered else 0
+            row = [
+                str(idx + 1),
+                p.studentName.replace('"', '""'),
+                str(p.score or 0),
+                str(p.correctCount or 0),
+                str(p.incorrectCount or 0),
+                str(p.totalAnswered or 0),
+                f"{acc_pct}%",
+                str(p.cheatCount or 0),
+                p.status
+            ]
+            for q in questions:
+                q_id_str = str(q.get("id"))
+                ans_info = (p.answers or {}).get(q_id_str)
+                if not ans_info:
+                    row.append("Yechilmagan")
+                elif ans_info.get("isCorrect"):
+                    row.append(f"To'g'ri (+{ans_info.get('pointsEarned', 0)})")
+                else:
+                    row.append("Noto'g'ri")
+
+            lines.append('"' + '","'.join(row) + '"')
+
+        csv_content = "\r\n".join(lines)
+        filename = f"Jonli_Test_{session.code}_{time.strftime('%Y%m%d')}.csv"
+        return Response(
+            content=csv_content.encode("utf-8-sig"),
+            media_type="text/csv; charset=utf-8",
+            headers={"Content-Disposition": f'attachment; filename="{filename}"'}
+        )
+    finally:
+        db.close()
+
+@app.get("/api/live-test/history")
+async def get_live_test_history(request: Request):
+    user_role = request.headers.get("X-User-Role")
+    if user_role == "student":
+        raise HTTPException(status_code=403, detail="Faqat o'qituvchilar ko'ra oladi.")
+
+    db = SessionLocal()
+    try:
+        sessions = db.query(LiveTestSessionModel).order_by(LiveTestSessionModel.createdAt.desc()).limit(30).all()
+        res_list = []
+        for s in sessions:
+            p_count = db.query(LiveParticipantModel).filter(LiveParticipantModel.sessionId == s.id).count()
+            s_dict = s.to_dict()
+            s_dict["participantCount"] = p_count
+            res_list.append(s_dict)
+        return {"success": True, "history": res_list}
+    finally:
+        db.close()
+
+@app.get("/api/student/active-live-tests")
+async def get_student_active_live_tests(request: Request):
+    user_id = request.headers.get("X-User-Id")
+    if not user_id:
+        return {"activeTests": []}
+
+    db = SessionLocal()
+    try:
+        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        student_group = user.groupId if user else None
+
+        active_sessions = db.query(LiveTestSessionModel).filter(
+            LiveTestSessionModel.status.in_(["lobby", "active", "paused"])
+        ).order_by(LiveTestSessionModel.createdAt.desc()).all()
+
+        results = []
+        for s in active_sessions:
+            if s.groupId == "all" or s.groupId == student_group or not s.groupId:
+                results.append({
+                    "id": s.id,
+                    "code": s.code,
+                    "testTitle": s.testTitle,
+                    "subject": s.subject,
+                    "teacherName": s.teacherName,
+                    "groupName": s.groupName,
+                    "status": s.status,
+                    "questionsCount": len(s.questions or []),
+                    "totalTimeLimit": s.settings.get("totalTimeLimit", 15) if s.settings else 15,
+                    "joinUrl": f"/student/live-test.html?code={s.code}"
+                })
+        return {"activeTests": results}
     finally:
         db.close()
 

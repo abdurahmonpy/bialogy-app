@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Jonli Test | BioEdu</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      touch-action: manipulation;
+    }
+    /* Prevent selection and context menu */
+    * {
+      -webkit-touch-callout: none;
+    }
+    /* Kahoot Button Animations */
+    .kahoot-btn {
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .kahoot-btn:active {
+      transform: scale(0.96);
+    }
+    @keyframes pulse-timer {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.08); }
+    }
+    .timer-urgency {
+      animation: pulse-timer 0.6s infinite ease-in-out;
+    }
+    @keyframes bounce-small {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+    }
+    .floating-card {
+      animation: bounce-small 3s infinite ease-in-out;
+    }
+    /* Lock kiosk mode */
+    .kiosk-locked {
+      overflow: hidden !important;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-white min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-transparent">
+
+  <!-- Audio Synthesizer (Zero asset dependencies) -->
+  <script>
+    class SoundFX {
+      constructor() {
+        this.ctx = null;
+        this.enabled = true;
+      }
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) this.ctx = new AudioContext();
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+      playTone(freq, type = 'sine', duration = 0.2, gainVal = 0.15) {
+        if (!this.enabled) return;
+        this.init();
+        if (!this.ctx) return;
+        try {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          osc.type = type;
+          osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+          gain.gain.setValueAtTime(gainVal, this.ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + duration);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start();
+          osc.stop(this.ctx.currentTime + duration);
+        } catch (e) {}
+      }
+      tick() {
+        this.playTone(800, 'triangle', 0.08, 0.1);
+      }
+      urgentTick() {
+        this.playTone(1100, 'square', 0.12, 0.2);
+      }
+      success() {
+        this.playTone(523.25, 'sine', 0.15, 0.2); // C5
+        setTimeout(() => this.playTone(659.25, 'sine', 0.15, 0.2), 120); // E5
+        setTimeout(() => this.playTone(783.99, 'sine', 0.35, 0.25), 240); // G5
+      }
+      warn() {
+        this.playTone(260, 'sawtooth', 0.35, 0.3);
+      }
+      fanfare() {
+        const notes = [523.25, 659.25, 783.99, 1046.50];
+        notes.forEach((freq, idx) => {
+          setTimeout(() => this.playTone(freq, 'sine', 0.3, 0.25), idx * 140);
+        });
+      }
+    }
+    const SFX = new SoundFX();
+  </script>
+
+  <!-- Anti-Cheat Overlay (Tab Switch / Blur Warning) -->
+  <div id="cheat-modal" class="fixed inset-0 z-50 bg-red-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-slate-900 border-2 border-red-500 rounded-3xl p-6 sm:p-8 text-center shadow-2xl relative animate-bounce-small">
+      <div class="w-16 h-16 rounded-full bg-red-500/20 text-red-500 border border-red-500 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="shield-alert" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-xl font-black text-red-400 mb-2">QOIDABUZARLIK QAYD ETILDI!</h3>
+      <p class="text-sm text-slate-300 mb-4">
+        Siz test oynasidan chiqdingiz yoki boshqa ilovaga o'tdingiz. Bu harakat ro'yxatga olindi va <strong>o'qituvchiga real vaqtda ko'rsatiladi</strong>.
+      </p>
+      <div class="bg-red-500/10 border border-red-500/30 rounded-xl p-3 mb-5 text-xs text-red-300 font-semibold">
+        Qoidabuzarliklar soni: <span id="cheat-count-display" class="font-bold text-white text-base">1</span> marta
+      </div>
+      <button onclick="dismissCheatModal()" class="w-full py-3.5 bg-red-600 hover:bg-red-500 text-white font-extrabold text-sm rounded-xl shadow-lg shadow-red-600/40 transition">
+        Testga Qaytish va Davom Etish
+      </button>
+    </div>
+  </div>
+
+  <!-- Fullscreen Required Warning Modal -->
+  <div id="fullscreen-modal" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-slate-900 border border-amber-500/40 rounded-3xl p-6 sm:p-8 text-center shadow-2xl">
+      <div class="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/40 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="maximize" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-xl font-black text-white mb-2">To'liq Ekran Rejimi Talab Qilinadi</h3>
+      <p class="text-xs text-slate-300 mb-6">
+        Jonli test adolatli o'tishi uchun to'liq ekran rejimi yoqilgan bo'lishi shart.
+      </p>
+      <button onclick="requestFullscreenMode()" class="w-full py-3.5 bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-sm rounded-xl shadow-lg shadow-amber-500/30 transition">
+        To'liq Ekranni Yoqish
+      </button>
+    </div>
+  </div>
+
+  <!-- Test Paused Overlay -->
+  <div id="pause-modal" class="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md hidden flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-slate-900 border border-amber-500/30 rounded-3xl p-6 sm:p-8 text-center shadow-2xl">
+      <div class="w-16 h-16 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto mb-4">
+        <i data-lucide="pause-circle" class="w-8 h-8"></i>
+      </div>
+      <h3 class="text-2xl font-black text-amber-400 mb-2">Test To'xtatildi</h3>
+      <p class="text-sm text-slate-300 mb-4">
+        O'qituvchi testni vaqtincha to'xtatdi. Iltimos, o'qituvchi davom ettirishini kuting...
+      </p>
+      <div class="w-6 h-6 border-2 border-amber-400 border-t-transparent rounded-full animate-spin mx-auto"></div>
+    </div>
+  </div>
+
+  <!-- STATE 1: LOBBY WAITING SCREEN -->
+  <section id="lobby-view" class="flex-1 flex flex-col items-center justify-center p-6 text-center max-w-xl mx-auto w-full">
+    <div class="w-full bg-white/5 border border-white/10 backdrop-blur-xl rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+      <div class="absolute -top-12 -right-12 w-32 h-32 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="inline-flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 text-emerald-400 rounded-full text-xs font-bold mb-4">
+        <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+        Kutish Zali
+      </div>
+
+      <h1 id="lobby-test-title" class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-2">
+        Test nomi yuklanmoqda...
+      </h1>
+      <p id="lobby-group-title" class="text-xs sm:text-sm text-slate-400 mb-6">
+        Guruh tekshirilmoqda...
+      </p>
+
+      <div class="p-6 bg-slate-900/80 border border-white/10 rounded-2xl mb-6 flex flex-col items-center justify-center">
+        <div class="w-16 h-16 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 font-black text-2xl flex items-center justify-center shadow-lg shadow-emerald-500/30 mb-3">
+          <span id="lobby-avatar">O</span>
+        </div>
+        <p class="text-sm text-slate-400 mb-1">Siz kirdingiz:</p>
+        <h2 id="lobby-participant-name" class="text-lg font-extrabold text-white">...</h2>
+        <span id="lobby-participant-tag" class="text-[11px] text-emerald-400 font-semibold bg-emerald-950/60 px-2.5 py-0.5 rounded-full border border-emerald-500/30 mt-1.5">
+          Tayyor
+        </span>
+      </div>
+
+      <div class="flex items-center justify-center gap-3 text-xs text-slate-400">
+        <div class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></div>
+        <span>O'qituvchi testni boshlaguncha kuting...</span>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-white/10 flex items-center justify-between text-xs text-slate-500">
+        <div class="flex items-center gap-1.5">
+          <i data-lucide="hash" class="w-3.5 h-3.5 text-slate-400"></i>
+          <span>PIN: <strong id="lobby-code-display" class="text-white">------</strong></span>
+        </div>
+        <button onclick="toggleAudio()" id="audio-toggle-btn" class="flex items-center gap-1 text-slate-400 hover:text-white">
+          <i data-lucide="volume-2" class="w-3.5 h-3.5"></i>
+          <span>Ovoz yoqiq</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- STATE 2: ACTIVE QUESTION RUNNER -->
+  <section id="runner-view" class="flex-1 flex flex-col justify-between hidden p-4 sm:p-6 max-w-4xl mx-auto w-full">
+    
+    <!-- Runner Top Header Bar -->
+    <header class="bg-slate-900/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 sm:p-4 mb-4 flex items-center justify-between shadow-lg">
+      <div class="flex items-center gap-3">
+        <div class="px-3 py-1 bg-white/10 rounded-xl text-xs sm:text-sm font-bold text-white border border-white/10">
+          <span id="current-q-num">1</span> / <span id="total-q-num">10</span>
+        </div>
+        <span id="q-category-badge" class="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-xs font-semibold border border-purple-500/30">
+          Biologiya
+        </span>
+      </div>
+
+      <!-- Live Timer -->
+      <div class="flex items-center gap-3">
+        <div class="flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-800 border border-slate-700">
+          <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+          <span id="timer-text" class="text-base sm:text-lg font-black font-mono text-amber-400">00:30</span>
+        </div>
+      </div>
+
+      <!-- Live Score -->
+      <div class="flex items-center gap-2 px-3 py-1 bg-emerald-500/20 border border-emerald-500/30 rounded-xl">
+        <i data-lucide="trophy" class="w-4 h-4 text-emerald-400"></i>
+        <span id="live-score" class="font-extrabold text-sm sm:text-base text-emerald-300 font-mono">0 ball</span>
+      </div>
+    </header>
+
+    <!-- Progress Timer Bar -->
+    <div class="w-full bg-slate-800 h-2 rounded-full mb-4 overflow-hidden border border-white/5">
+      <div id="timer-progress-bar" class="bg-gradient-to-r from-emerald-500 via-amber-400 to-red-500 h-full w-full transition-all duration-300"></div>
+    </div>
+
+    <!-- Question Container -->
+    <div class="flex-1 flex flex-col justify-center">
+      
+      <!-- Question Prompt Card -->
+      <div class="bg-white/10 backdrop-blur-md border border-white/15 rounded-3xl p-5 sm:p-7 shadow-xl mb-6 text-center relative overflow-hidden">
+        <div class="flex items-center justify-between mb-3 text-xs text-slate-400 font-semibold">
+          <span id="question-type-label">Yakka tanlov</span>
+          <span id="question-points-label" class="text-amber-400 font-bold">1000 ball</span>
+        </div>
+
+        <!-- Optional Image -->
+        <div id="question-image-box" class="hidden mb-4 max-h-56 overflow-hidden rounded-2xl border border-white/10 mx-auto">
+          <img id="question-img" src="" alt="Savol rasmi" class="max-h-56 mx-auto object-contain rounded-2xl">
+        </div>
+
+        <h2 id="question-title" class="text-lg sm:text-2xl font-extrabold text-white leading-snug">
+          Savol matni yuklanmoqda...
+        </h2>
+      </div>
+
+      <!-- Answer Options / Inputs Grid -->
+      <div id="options-container" class="w-full">
+        <!-- Rendered dynamically by question type -->
+      </div>
+
+      <!-- Multiple Choice Confirm Button (shown only for multiple_choice) -->
+      <div id="multi-choice-action" class="hidden mt-4">
+        <button onclick="submitMultiChoiceAnswer()" class="w-full py-4 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-base rounded-2xl shadow-xl shadow-emerald-500/30 transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="check" class="w-5 h-5"></i>
+          <span>Javobni Tasdiqlash</span>
+        </button>
+      </div>
+
+      <!-- Feedback Banner (shown after submitting an answer) -->
+      <div id="feedback-banner" class="hidden mt-6 p-4 rounded-2xl text-center border backdrop-blur-md">
+        <p id="feedback-title" class="text-lg font-black mb-1">Javob qabul qilindi!</p>
+        <p id="feedback-desc" class="text-xs text-slate-300">Keyingi savol yuklanmoqda...</p>
+      </div>
+
+    </div>
+
+    <!-- Footer Status -->
+    <footer class="mt-6 pt-3 border-t border-white/10 flex items-center justify-between text-xs text-slate-500">
+      <div class="flex items-center gap-2">
+        <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+        <span id="participant-footer-name">O'quvchi</span>
+      </div>
+      <div class="text-[11px] text-slate-500">
+        Fokus rejimida • Chiqish taqiqlangan
+      </div>
+    </footer>
+  </section>
+
+  <!-- STATE 3: FINAL RESULTS SCREEN -->
+  <section id="results-view" class="flex-1 flex flex-col justify-center items-center hidden p-4 sm:p-6 max-w-xl mx-auto w-full text-center">
+    <!-- Confetti Canvas -->
+    <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-40"></canvas>
+
+    <div class="w-full bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+      <!-- Glow -->
+      <div class="absolute -top-16 -right-16 w-36 h-36 bg-amber-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+      <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-amber-500/30 floating-card">
+        <i data-lucide="award" class="w-10 h-10"></i>
+      </div>
+
+      <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">
+        Sinov Yakunlandi!
+      </h1>
+      <p class="text-xs sm:text-sm text-slate-300 mb-6">
+        Natijalaringiz muvaffaqiyatli saqlandi va o'qituvchiga yuborildi.
+      </p>
+
+      <!-- Score KPI Card -->
+      <div class="grid grid-cols-3 gap-3 p-4 bg-slate-900/90 border border-white/10 rounded-2xl mb-6">
+        <div>
+          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ball</span>
+          <span id="result-score" class="text-xl sm:text-2xl font-black text-amber-400 font-mono">0</span>
+        </div>
+        <div>
+          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">To'g'ri</span>
+          <span id="result-correct" class="text-xl sm:text-2xl font-black text-emerald-400 font-mono">0</span>
+        </div>
+        <div>
+          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Aniqlik</span>
+          <span id="result-accuracy" class="text-xl sm:text-2xl font-black text-purple-400 font-mono">0%</span>
+        </div>
+      </div>
+
+      <!-- Optional Detailed Review (if enabled by teacher) -->
+      <div id="review-container" class="hidden mb-6 text-left">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
+          <i data-lucide="list-checks" class="w-4 h-4 text-emerald-400"></i>
+          Savollar tahlili va to'g'ri javoblar
+        </h3>
+        <div id="review-list" class="space-y-3 max-h-60 overflow-y-auto pr-1">
+          <!-- Injected via JS -->
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div class="space-y-2">
+        <button onclick="exitKioskAndReturn()" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-base rounded-2xl shadow-xl shadow-emerald-500/30 transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="check-circle" class="w-5 h-5"></i>
+          <span>Test Markaziga Qaytish</span>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONFETTI HELPER -->
+  <script>
+    function launchConfetti() {
+      const canvas = document.getElementById("confetti-canvas");
+      if (!canvas) return;
+      const ctx = canvas.getContext("2d");
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const particles = [];
+      const colors = ["#10b981", "#3b82f6", "#f59e0b", "#ec4899", "#8b5cf6", "#ffffff"];
+
+      for (let i = 0; i < 90; i++) {
+        particles.push({
+          x: Math.random() * canvas.width,
+          y: Math.random() * canvas.height * 0.4,
+          r: Math.random() * 6 + 3,
+          color: colors[Math.floor(Math.random() * colors.length)],
+          vx: (Math.random() - 0.5) * 4,
+          vy: Math.random() * 3 + 2,
+          rotation: Math.random() * 360,
+          rotSpeed: (Math.random() - 0.5) * 8
+        });
+      }
+
+      let frames = 0;
+      function animate() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        particles.forEach(p => {
+          ctx.save();
+          ctx.translate(p.x, p.y);
+          ctx.rotate((p.rotation * Math.PI) / 180);
+          ctx.fillStyle = p.color;
+          ctx.fillRect(-p.r, -p.r, p.r * 2, p.r * 1.4);
+          ctx.restore();
+
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rotation += p.rotSpeed;
+          p.vy += 0.05; // gravity
+        });
+
+        frames++;
+        if (frames < 200) {
+          requestAnimationFrame(animate);
+        } else {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+      }
+      animate();
+    }
+  </script>
+
+  <!-- MAIN SCRIPT -->
+  <script src="/js/auth.js"></script>
+  <script>
+    // State variables
+    let sessionData = null;
+    let participantData = null;
+    let questionsList = [];
+    let currentQIndex = 0;
+    let questionTimerInterval = null;
+    let questionTimeRemaining = 30;
+    let questionStartTimeMs = 0;
+    let currentScore = 0;
+    let selectedMultiOptions = new Set();
+    let isSubmitting = false;
+    let isPaused = false;
+    let ws = null;
+    let cheatCount = 0;
+    let testCode = "";
+
+    // Elements
+    const lobbyView = document.getElementById("lobby-view");
+    const runnerView = document.getElementById("runner-view");
+    const resultsView = document.getElementById("results-view");
+    const pauseModal = document.getElementById("pause-modal");
+    const cheatModal = document.getElementById("cheat-modal");
+    const fullscreenModal = document.getElementById("fullscreen-modal");
+    const cheatCountDisplay = document.getElementById("cheat-count-display");
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      lucide.createIcons();
+      initAntiCheatHandlers();
+
+      const urlParams = new URLSearchParams(window.location.search);
+      testCode = (urlParams.get("code") || urlParams.get("pin") || "").replace(/\D/g, "");
+      const guestNameParam = urlParams.get("guestName") || sessionStorage.getItem("live_guest_name") || "";
+
+      if (!testCode) {
+        alert("6 xonali test PIN-kodi topilmadi. Ulanish sahifasiga yo'naltirilmoqdasiz.");
+        window.location.href = "/join.html";
+        return;
+      }
+
+      await joinSession(testCode, guestNameParam);
+    });
+
+    // 1. Join Session API Call
+    async function joinSession(code, guestName) {
+      const user = window.Auth ? window.Auth.getCurrentUser() : null;
+      let payload = {
+        code: code,
+        isGuest: !user,
+        studentId: user ? user.id : "",
+        studentName: user ? (user.fullName || "O'quvchi") : (guestName || "Mehmon O'quvchi")
+      };
+
+      try {
+        const res = await fetch("/api/live-test/join", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.detail || "Testga ulanib bo'lmadi");
+        }
+
+        sessionData = data.session;
+        participantData = data.participant;
+        questionsList = data.questions || [];
+
+        // Save reconnect state
+        sessionStorage.setItem("live_test_session_id", sessionData.id);
+        sessionStorage.setItem("live_participant_id", participantData.id);
+
+        // Update Lobby UI
+        document.getElementById("lobby-test-title").textContent = sessionData.testTitle || "Biologiya Testi";
+        document.getElementById("lobby-group-title").textContent = sessionData.groupName ? `Guruh: ${sessionData.groupName}` : "Umumiy sinov";
+        document.getElementById("lobby-participant-name").textContent = participantData.studentName;
+        document.getElementById("lobby-avatar").textContent = (participantData.studentName || "O")[0].toUpperCase();
+        document.getElementById("lobby-code-display").textContent = sessionData.code;
+
+        currentScore = participantData.score || 0;
+        cheatCount = participantData.cheatCount || 0;
+
+        // Connect WebSocket
+        connectWebSocket(sessionData.id, participantData.id);
+
+        // Check if test was already in progress (reconnect case)
+        if (sessionData.status === "active" || sessionData.status === "in_progress") {
+          // Fast forward to current unanswered question
+          const totalAns = participantData.totalAnswered || 0;
+          if (totalAns >= questionsList.length) {
+            showResultsScreen();
+          } else {
+            currentQIndex = Math.min(totalAns, questionsList.length - 1);
+            startTestRunner();
+          }
+        } else if (sessionData.status === "finished") {
+          showResultsScreen();
+        } else {
+          // Stay in lobby
+          SFX.playTone(440, 'sine', 0.2, 0.1);
+        }
+
+      } catch (err) {
+        alert("Xatolik: " + err.message);
+        window.location.href = "/join.html";
+      }
+    }
+
+    // 2. WebSocket Connection
+    function connectWebSocket(sessionId, participantId) {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws/live-test/${sessionId}?participant_id=${participantId}&is_teacher=false`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const msg = JSON.parse(event.data);
+          handleWebSocketMessage(msg);
+        } catch (e) {
+          console.error("WS error:", e);
+        }
+      };
+
+      ws.onclose = () => {
+        // Reconnect after 2 seconds if test still active
+        if (sessionData && sessionData.status !== "finished") {
+          setTimeout(() => connectWebSocket(sessionId, participantId), 2000);
+        }
+      };
+    }
+
+    function handleWebSocketMessage(msg) {
+      if (msg.type === "test_started") {
+        sessionData.status = "in_progress";
+        currentQIndex = 0;
+        startTestRunner();
+      } else if (msg.type === "test_paused") {
+        isPaused = true;
+        pauseModal.classList.remove("hidden");
+        SFX.warn();
+      } else if (msg.type === "test_resumed") {
+        isPaused = false;
+        pauseModal.classList.add("hidden");
+        SFX.playTone(600, 'sine', 0.15, 0.15);
+      } else if (msg.type === "time_extended") {
+        const addedSec = msg.secondsAdded || 300;
+        questionTimeRemaining += addedSec;
+        alert(`O'qituvchi vaqtni ${Math.round(addedSec/60)} daqiqaga uzaytirdi!`);
+      } else if (msg.type === "test_ended") {
+        sessionData.status = "finished";
+        showResultsScreen();
+      }
+    }
+
+    // 3. Start Test Runner (Kiosk lockdown)
+    function startTestRunner() {
+      lobbyView.classList.add("hidden");
+      resultsView.classList.add("hidden");
+      runnerView.classList.remove("hidden");
+      document.body.classList.add("kiosk-locked");
+
+      document.getElementById("participant-footer-name").textContent = participantData.studentName;
+      document.getElementById("total-q-num").textContent = questionsList.length;
+
+      // Try entering fullscreen
+      requestFullscreenMode();
+
+      // Render Question
+      renderCurrentQuestion();
+      SFX.playTone(523.25, 'sine', 0.2, 0.15);
+    }
+
+    // 4. Render Current Question
+    function renderCurrentQuestion() {
+      if (currentQIndex >= questionsList.length) {
+        showResultsScreen();
+        return;
+      }
+
+      const q = questionsList[currentQIndex];
+      isSubmitting = false;
+      selectedMultiOptions.clear();
+
+      // Header numbers
+      document.getElementById("current-q-num").textContent = currentQIndex + 1;
+      document.getElementById("live-score").textContent = `${currentScore} ball`;
+
+      // Question card
+      document.getElementById("question-title").textContent = q.text || "Savol matni";
+      document.getElementById("question-points-label").textContent = `${q.points || 1000} ball`;
+
+      // Type label
+      const typeMap = {
+        "single_choice": "Yakka tanlov (1 ta javob)",
+        "multiple_choice": "Ko'p tanlov (bir nechta to'g'ri javob)",
+        "true_false": "Rost / Yolg'on",
+        "short_answer": "Qisqa yozma javob"
+      };
+      document.getElementById("question-type-label").textContent = typeMap[q.type] || "Savol";
+
+      // Question Image
+      const imgBox = document.getElementById("question-image-box");
+      const imgEl = document.getElementById("question-img");
+      if (q.imageUrl) {
+        imgEl.src = q.imageUrl;
+        imgBox.classList.remove("hidden");
+      } else {
+        imgBox.classList.add("hidden");
+      }
+
+      // Hide feedback banner
+      const feedbackBanner = document.getElementById("feedback-banner");
+      feedbackBanner.classList.add("hidden");
+
+      // Options Rendering
+      const container = document.getElementById("options-container");
+      const multiAction = document.getElementById("multi-choice-action");
+      container.innerHTML = "";
+      multiAction.classList.add("hidden");
+
+      const qType = q.type || "single_choice";
+
+      if (qType === "single_choice") {
+        renderSingleChoiceOptions(q, container);
+      } else if (qType === "multiple_choice") {
+        renderMultipleChoiceOptions(q, container);
+        multiAction.classList.remove("hidden");
+      } else if (qType === "true_false") {
+        renderTrueFalseOptions(q, container);
+      } else if (qType === "short_answer") {
+        renderShortAnswerOption(q, container);
+      }
+
+      lucide.createIcons();
+
+      // Start question timer
+      const perQSec = (sessionData.settings && sessionData.settings.perQuestionTime) || 30;
+      startQuestionTimer(perQSec);
+    }
+
+    // 5. Option Renderers
+    const KAHOOT_COLORS = [
+      { bg: "bg-red-600 hover:bg-red-500", border: "border-red-400", shadow: "shadow-red-600/30", icon: "triangle", shape: "▲" },
+      { bg: "bg-blue-600 hover:bg-blue-500", border: "border-blue-400", shadow: "shadow-blue-600/30", icon: "diamond", shape: "◆" },
+      { bg: "bg-amber-500 hover:bg-amber-400", border: "border-amber-300", shadow: "shadow-amber-500/30", icon: "circle", shape: "●" },
+      { bg: "bg-emerald-600 hover:bg-emerald-500", border: "border-emerald-400", shadow: "shadow-emerald-600/30", icon: "square", shape: "■" }
+    ];
+
+    function renderSingleChoiceOptions(q, container) {
+      const opts = q.options || [];
+      const grid = document.createElement("div");
+      grid.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4";
+
+      opts.forEach((opt, idx) => {
+        const theme = KAHOOT_COLORS[idx % KAHOOT_COLORS.length];
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = `kahoot-btn w-full p-4 sm:p-5 ${theme.bg} text-white font-extrabold text-base sm:text-lg rounded-2xl shadow-lg ${theme.shadow} border-2 border-transparent active:border-white flex items-center gap-3 text-left cursor-pointer transition`;
+        btn.innerHTML = `
+          <div class="w-9 h-9 rounded-xl bg-black/20 flex items-center justify-center text-lg flex-shrink-0">
+            ${theme.shape}
+          </div>
+          <span class="flex-1 leading-snug">${escapeHtml(opt)}</span>
+        `;
+        btn.onclick = () => submitSingleAnswer(q.id, opt, btn);
+        grid.appendChild(btn);
+      });
+
+      container.appendChild(grid);
+    }
+
+    function renderMultipleChoiceOptions(q, container) {
+      const opts = q.options || [];
+      const grid = document.createElement("div");
+      grid.className = "grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4";
+
+      opts.forEach((opt, idx) => {
+        const theme = KAHOOT_COLORS[idx % KAHOOT_COLORS.length];
+        const card = document.createElement("div");
+        card.className = `kahoot-btn p-4 sm:p-5 bg-slate-900 border-2 border-slate-700 hover:border-slate-500 rounded-2xl text-left cursor-pointer flex items-center gap-3 transition select-none`;
+        card.innerHTML = `
+          <div class="checkbox-box w-6 h-6 rounded-lg border-2 border-slate-500 flex items-center justify-center text-transparent">
+            <i data-lucide="check" class="w-4 h-4 text-white"></i>
+          </div>
+          <span class="flex-1 font-bold text-sm sm:text-base text-slate-200">${escapeHtml(opt)}</span>
+        `;
+
+        card.onclick = () => {
+          if (selectedMultiOptions.has(opt)) {
+            selectedMultiOptions.delete(opt);
+            card.classList.remove("border-emerald-500", "bg-emerald-950/30");
+            card.querySelector(".checkbox-box").classList.remove("bg-emerald-500", "border-emerald-500");
+          } else {
+            selectedMultiOptions.add(opt);
+            card.classList.add("border-emerald-500", "bg-emerald-950/30");
+            card.querySelector(".checkbox-box").classList.add("bg-emerald-500", "border-emerald-500");
+          }
+          lucide.createIcons();
+          SFX.tick();
+        };
+
+        grid.appendChild(card);
+      });
+
+      container.appendChild(grid);
+    }
+
+    function renderTrueFalseOptions(q, container) {
+      const grid = document.createElement("div");
+      grid.className = "grid grid-cols-1 sm:grid-cols-2 gap-4";
+
+      const trueBtn = document.createElement("button");
+      trueBtn.type = "button";
+      trueBtn.className = "kahoot-btn p-6 bg-emerald-600 hover:bg-emerald-500 text-white font-black text-xl rounded-2xl shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-3 cursor-pointer";
+      trueBtn.innerHTML = `
+        <div class="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center">
+          <i data-lucide="check" class="w-6 h-6"></i>
+        </div>
+        <span>ROST (To'g'ri)</span>
+      `;
+      trueBtn.onclick = () => submitSingleAnswer(q.id, "true", trueBtn);
+
+      const falseBtn = document.createElement("button");
+      falseBtn.type = "button";
+      falseBtn.className = "kahoot-btn p-6 bg-red-600 hover:bg-red-500 text-white font-black text-xl rounded-2xl shadow-xl shadow-red-600/30 flex items-center justify-center gap-3 cursor-pointer";
+      falseBtn.innerHTML = `
+        <div class="w-10 h-10 rounded-xl bg-black/20 flex items-center justify-center">
+          <i data-lucide="x" class="w-6 h-6"></i>
+        </div>
+        <span>YOLG'ON (Noto'g'ri)</span>
+      `;
+      falseBtn.onclick = () => submitSingleAnswer(q.id, "false", falseBtn);
+
+      grid.appendChild(trueBtn);
+      grid.appendChild(falseBtn);
+      container.appendChild(grid);
+    }
+
+    function renderShortAnswerOption(q, container) {
+      const box = document.createElement("div");
+      box.className = "space-y-3 max-w-lg mx-auto";
+      box.innerHTML = `
+        <input type="text" id="short-answer-input" placeholder="Javobingizni bu yerga yozing..."
+          class="w-full px-5 py-4 bg-slate-900 border-2 border-slate-700 rounded-2xl text-white text-base font-bold placeholder-slate-500 focus:outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-400/20 transition">
+        <button onclick="submitShortAnswer('${q.id}')" class="w-full py-4 bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-base rounded-2xl shadow-xl shadow-amber-500/30 transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="send" class="w-5 h-5"></i>
+          <span>Javobni Yuborish</span>
+        </button>
+      `;
+      container.appendChild(box);
+    }
+
+    // 6. Timer handling
+    function startQuestionTimer(seconds) {
+      clearInterval(questionTimerInterval);
+      questionTimeRemaining = seconds;
+      questionStartTimeMs = Date.now();
+      updateTimerUI(seconds, seconds);
+
+      questionTimerInterval = setInterval(() => {
+        if (isPaused) return;
+
+        questionTimeRemaining -= 1;
+        updateTimerUI(questionTimeRemaining, seconds);
+
+        if (questionTimeRemaining <= 5 && questionTimeRemaining > 0) {
+          SFX.urgentTick();
+          document.getElementById("timer-text").classList.add("timer-urgency");
+        } else {
+          document.getElementById("timer-text").classList.remove("timer-urgency");
+        }
+
+        if (questionTimeRemaining <= 0) {
+          clearInterval(questionTimerInterval);
+          autoSubmitOnTimeout();
+        }
+      }, 1000);
+    }
+
+    function updateTimerUI(remaining, total) {
+      const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+      const ss = String(remaining % 60).padStart(2, '0');
+      document.getElementById("timer-text").textContent = `${mm}:${ss}`;
+
+      const pct = Math.max(0, Math.min(100, (remaining / total) * 100));
+      const bar = document.getElementById("timer-progress-bar");
+      bar.style.width = `${pct}%`;
+    }
+
+    // 7. Answer Submissions
+    async function submitSingleAnswer(qId, selectedOption, btnEl) {
+      if (isSubmitting) return;
+      isSubmitting = true;
+      clearInterval(questionTimerInterval);
+
+      // Visual feedback
+      if (btnEl) {
+        btnEl.classList.add("ring-4", "ring-white", "scale-105");
+      }
+
+      const timeSpent = Date.now() - questionStartTimeMs;
+      await postAnswer(qId, selectedOption, timeSpent);
+    }
+
+    async function submitMultiChoiceAnswer() {
+      if (isSubmitting) return;
+      if (selectedMultiOptions.size === 0) {
+        alert("Iltimos, kamida bitta variantni tanlang");
+        return;
+      }
+      isSubmitting = true;
+      clearInterval(questionTimerInterval);
+
+      const q = questionsList[currentQIndex];
+      const timeSpent = Date.now() - questionStartTimeMs;
+      await postAnswer(q.id, Array.from(selectedMultiOptions), timeSpent);
+    }
+
+    async function submitShortAnswer(qId) {
+      if (isSubmitting) return;
+      const input = document.getElementById("short-answer-input");
+      const val = (input ? input.value : "").trim();
+      if (!val) {
+        alert("Iltimos, javobingizni yozing");
+        return;
+      }
+      isSubmitting = true;
+      clearInterval(questionTimerInterval);
+
+      const timeSpent = Date.now() - questionStartTimeMs;
+      await postAnswer(qId, val, timeSpent);
+    }
+
+    async function autoSubmitOnTimeout() {
+      if (isSubmitting) return;
+      isSubmitting = true;
+
+      const q = questionsList[currentQIndex];
+      SFX.warn();
+      await postAnswer(q.id, null, (sessionData.settings.perQuestionTime || 30) * 1000);
+    }
+
+    async function postAnswer(qId, answerValue, timeSpentMs) {
+      const feedbackBanner = document.getElementById("feedback-banner");
+      const feedbackTitle = document.getElementById("feedback-title");
+      const feedbackDesc = document.getElementById("feedback-desc");
+
+      feedbackBanner.classList.remove("hidden");
+      feedbackTitle.textContent = "Javob qabul qilindi!";
+      feedbackDesc.textContent = "Tekshirilmoqda...";
+
+      try {
+        const res = await fetch(`/api/live-test/session/${sessionData.id}/submit`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            participantId: participantData.id,
+            questionId: qId,
+            answer: answerValue,
+            timeSpentMs: timeSpentMs
+          })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          currentScore = data.totalScore || 0;
+          document.getElementById("live-score").textContent = `${currentScore} ball`;
+
+          if (data.isCorrect) {
+            feedbackBanner.className = "mt-6 p-4 rounded-2xl text-center border bg-emerald-500/20 border-emerald-500 text-emerald-200";
+            feedbackTitle.textContent = "To'g'ri javob! 🎉";
+            feedbackDesc.textContent = `+${data.earnedPoints} ball qo'shildi!`;
+            SFX.success();
+          } else {
+            feedbackBanner.className = "mt-6 p-4 rounded-2xl text-center border bg-red-500/20 border-red-500 text-red-200";
+            feedbackTitle.textContent = answerValue === null ? "Vaqt tugadi!" : "Noto'g'ri javob";
+            feedbackDesc.textContent = "+0 ball";
+            SFX.warn();
+          }
+
+          // Advance to next question after 1.5 seconds
+          setTimeout(() => {
+            currentQIndex++;
+            if (currentQIndex < questionsList.length && !data.isFinished) {
+              renderCurrentQuestion();
+            } else {
+              showResultsScreen();
+            }
+          }, 1500);
+
+        } else {
+          throw new Error(data.detail || "Javobni saqlab bo'lmadi");
+        }
+      } catch (err) {
+        console.error("Submit error:", err);
+        // Advance anyway so student isn't stuck
+        currentQIndex++;
+        if (currentQIndex < questionsList.length) {
+          renderCurrentQuestion();
+        } else {
+          showResultsScreen();
+        }
+      }
+    }
+
+    // 8. Results View
+    async function showResultsScreen() {
+      clearInterval(questionTimerInterval);
+      lobbyView.classList.add("hidden");
+      runnerView.classList.add("hidden");
+      resultsView.classList.remove("hidden");
+
+      SFX.fanfare();
+      launchConfetti();
+
+      // Fetch fresh participant and session results
+      try {
+        const res = await fetch(`/api/live-test/session/${sessionData.id}/results`);
+        const data = await res.json();
+        if (res.ok) {
+          const myResult = data.participants.find(p => p.id === participantData.id);
+          if (myResult) {
+            document.getElementById("result-score").textContent = myResult.score;
+            document.getElementById("result-correct").textContent = `${myResult.correctCount} / ${data.totalQuestions}`;
+            const acc = data.totalQuestions > 0 ? Math.round((myResult.correctCount / data.totalQuestions) * 100) : 0;
+            document.getElementById("result-accuracy").textContent = `${acc}%`;
+
+            // If teacher allowed showing results & answers
+            if (data.session.settings && data.session.settings.showResultsToStudents) {
+              renderDetailedReview(data.session.questions, myResult.answers);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Results fetch error:", e);
+      }
+    }
+
+    function renderDetailedReview(allQuestions, myAnswers) {
+      const reviewContainer = document.getElementById("review-container");
+      const reviewList = document.getElementById("review-list");
+      reviewContainer.classList.remove("hidden");
+      reviewList.innerHTML = "";
+
+      (allQuestions || []).forEach((q, idx) => {
+        const ansObj = (myAnswers && myAnswers[String(q.id)]) || {};
+        const isCorr = ansObj.isCorrect;
+
+        const row = document.createElement("div");
+        row.className = `p-3 rounded-xl border text-xs ${isCorr ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-red-950/30 border-red-500/40'}`;
+        row.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-bold text-white">${idx + 1}-savol: ${escapeHtml(q.text)}</span>
+            <span class="font-bold ${isCorr ? 'text-emerald-400' : 'text-red-400'}">
+              ${isCorr ? 'To\'g\'ri' : 'Xato'}
+            </span>
+          </div>
+          <p class="text-slate-300">Sizning javobingiz: <strong class="text-white">${escapeHtml(String(ansObj.answer || 'Javob berilmadi'))}</strong></p>
+          <p class="text-emerald-300">To'g'ri javob: <strong>${escapeHtml(String(q.correctAnswer))}</strong></p>
+          ${q.explanation ? `<p class="text-slate-400 mt-1 italic">Izoh: ${escapeHtml(q.explanation)}</p>` : ''}
+        `;
+        reviewList.appendChild(row);
+      });
+      lucide.createIcons();
+    }
+
+    function isTestRunning() {
+      return sessionData && (sessionData.status === "active" || sessionData.status === "in_progress");
+    }
+
+    // 9. Anti-Cheat Handlers
+    function initAntiCheatHandlers() {
+      // Visibility change / Tab blur
+      document.addEventListener("visibilitychange", () => {
+        if (document.hidden && isTestRunning()) {
+          triggerCheatWarning("tab_switch");
+        }
+      });
+
+      window.addEventListener("blur", () => {
+        if (isTestRunning()) {
+          triggerCheatWarning("window_blur");
+        }
+      });
+
+      // Context menu prevention
+      document.addEventListener("contextmenu", (e) => {
+        e.preventDefault();
+        return false;
+      });
+
+      // Copy / Cut / Paste prevention
+      document.addEventListener("copy", (e) => e.preventDefault());
+      document.addEventListener("cut", (e) => e.preventDefault());
+      document.addEventListener("paste", (e) => e.preventDefault());
+
+      // Key combination prevention (Ctrl+C, Ctrl+V, F12)
+      document.addEventListener("keydown", (e) => {
+        if ((e.ctrlKey || e.metaKey) && ['c', 'v', 'u', 'p', 's', 'a'].includes(e.key.toLowerCase())) {
+          e.preventDefault();
+        }
+        if (e.key === "F12") {
+          e.preventDefault();
+        }
+      });
+
+      // Exit confirmation
+      window.addEventListener("beforeunload", (e) => {
+        if (isTestRunning()) {
+          e.preventDefault();
+          e.returnValue = "Test davom etmoqda! Chiqsangiz natijalaringiz yo'qolishi mumkin.";
+        }
+      });
+
+      // Fullscreen change listener
+      document.addEventListener("fullscreenchange", () => {
+        if (!document.fullscreenElement && isTestRunning()) {
+          fullscreenModal.classList.remove("hidden");
+        } else {
+          fullscreenModal.classList.add("hidden");
+        }
+      });
+    }
+
+    async function triggerCheatWarning(type) {
+      cheatCount++;
+      cheatCountDisplay.textContent = cheatCount;
+      cheatModal.classList.remove("hidden");
+      SFX.warn();
+
+      // Log to backend
+      if (sessionData && participantData) {
+        try {
+          await fetch(`/api/live-test/session/${sessionData.id}/cheat-log`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              participantId: participantData.id,
+              cheatType: type
+            })
+          });
+        } catch (e) {}
+      }
+    }
+
+    function dismissCheatModal() {
+      cheatModal.classList.add("hidden");
+      requestFullscreenMode();
+    }
+
+    function requestFullscreenMode() {
+      const elem = document.documentElement;
+      if (elem.requestFullscreen) {
+        elem.requestFullscreen().catch(() => {});
+      } else if (elem.webkitRequestFullscreen) {
+        elem.webkitRequestFullscreen();
+      }
+      fullscreenModal.classList.add("hidden");
+    }
+
+    function exitKioskAndReturn() {
+      if (document.exitFullscreen) {
+        document.exitFullscreen().catch(() => {});
+      }
+      document.body.classList.remove("kiosk-locked");
+      window.location.href = "/student/test.html";
+    }
+
+    function toggleAudio() {
+      SFX.enabled = !SFX.enabled;
+      const btn = document.getElementById("audio-toggle-btn");
+      if (SFX.enabled) {
+        btn.innerHTML = `<i data-lucide="volume-2" class="w-3.5 h-3.5"></i><span>Ovoz yoqiq</span>`;
+      } else {
+        btn.innerHTML = `<i data-lucide="volume-x" class="w-3.5 h-3.5"></i><span>Ovoz o'chiq</span>`;
+      }
+      lucide.createIcons();
+    }
+
+    function escapeHtml(text) {
+      if (!text) return "";
+      return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>

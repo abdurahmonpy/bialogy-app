@@ -35,6 +35,58 @@
       <!-- State 1: Test Selection View -->
       <div id="selection-view" class="space-y-8">
         
+        <!-- Live Kahoot-Style Test Section -->
+        <div class="bg-gradient-to-r from-purple-950 via-indigo-900 to-slate-900 text-white p-6 sm:p-7 rounded-3xl border border-purple-500/30 shadow-xl relative overflow-hidden">
+          <div class="absolute -top-12 -right-12 w-40 h-40 bg-purple-500/20 rounded-full blur-2xl pointer-events-none"></div>
+
+          <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 relative z-10">
+            <!-- Left Info -->
+            <div class="flex-1">
+              <div class="inline-flex items-center gap-2 px-3 py-1 bg-amber-400/20 border border-amber-400/40 text-amber-300 rounded-full text-xs font-black mb-3">
+                <span class="w-2 h-2 rounded-full bg-amber-400 animate-ping"></span>
+                Jonli Sinov Rejimi (Kahoot)
+              </div>
+              <h2 class="text-xl sm:text-2xl font-black text-white tracking-tight mb-1">
+                Real Vaqtda Guruh Testi
+              </h2>
+              <p class="text-xs text-purple-200 max-w-lg mb-4">
+                O'qituvchi boshlagan jonli testda ishtirok eting, har bir savol uchun tezkor javob berib ball to'plang va yetakchilar safiga chiqing!
+              </p>
+
+              <!-- Active Live Tests for Group -->
+              <div id="student-active-sessions-container" class="space-y-2">
+                <div class="flex items-center gap-2 text-xs text-purple-300">
+                  <div class="w-3.5 h-3.5 border-2 border-purple-400 border-t-transparent rounded-full animate-spin"></div>
+                  <span>Guruh uchun faol testlar qidirilmoqda...</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right PIN Quick Join Box -->
+            <div class="bg-white/10 backdrop-blur-md border border-white/20 p-5 rounded-2xl w-full lg:w-80 flex-shrink-0">
+              <h3 class="text-xs font-bold uppercase tracking-wider text-purple-200 mb-2 flex items-center gap-1.5">
+                <i data-lucide="hash" class="w-4 h-4 text-amber-400"></i>
+                PIN-kod bilan ulanish
+              </h3>
+              <form id="student-pin-join-form" class="space-y-3">
+                <input 
+                  type="text" 
+                  id="student-quick-pin" 
+                  maxlength="6" 
+                  required
+                  placeholder="6 xonali PIN" 
+                  class="w-full text-center text-xl font-black tracking-widest px-4 py-2.5 bg-black/40 border border-white/20 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition">
+                <button 
+                  type="submit" 
+                  class="w-full py-2.5 bg-gradient-to-r from-amber-400 to-orange-500 hover:from-amber-300 hover:to-orange-400 text-slate-950 font-black text-xs rounded-xl shadow-lg transition flex items-center justify-center gap-1.5 cursor-pointer">
+                  <span>Kirish</span>
+                  <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+
         <!-- Leveled Tests from Teachers -->
         <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm">
           <div class="flex items-center justify-between mb-5">
@@ -473,9 +525,87 @@
       testRunnerView.classList.add("hidden");
       selectionView.classList.remove("hidden");
       loadLeveledTests();
+      loadStudentActiveSessions();
     };
 
+    // ==============================================================
+    // Active Live Test Sessions Handler for Student Hub
+    // ==============================================================
+    async function loadStudentActiveSessions() {
+      const container = document.getElementById("student-active-sessions-container");
+      if (!container) return;
+
+      if (!currentUser || !currentUser.id) {
+        container.innerHTML = `
+          <div class="p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-purple-200">
+            Jonli testlarga guruh bo'yicha ulanish uchun <a href="/login.html" class="font-bold underline text-white">tizimga kiring</a> yoki o'ngdagi PIN-kod orqali kiring.
+          </div>
+        `;
+        return;
+      }
+
+      try {
+        const res = await fetch("/api/student/active-live-tests", {
+          headers: {
+            "X-User-Id": currentUser.id,
+            "X-User-Role": currentUser.role || "student"
+          }
+        });
+
+        if (!res.ok) throw new Error("Yuklab bo'lmadi");
+        const data = await res.json();
+        const activeList = data.activeTests || [];
+
+        if (activeList.length === 0) {
+          container.innerHTML = `
+            <div class="p-3 bg-white/5 border border-white/10 rounded-xl text-xs text-purple-200 flex items-center gap-2">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-400 flex-shrink-0"></i>
+              <span>Hozirda guruhingiz uchun faol test yo'q. O'qituvchi yangi sinov boshlaganda bu yerda avtomatik ko'rinadi.</span>
+            </div>
+          `;
+        } else {
+          container.innerHTML = activeList.map(t => `
+            <div class="p-3.5 bg-white/10 border border-emerald-400/30 rounded-xl flex items-center justify-between gap-3">
+              <div class="overflow-hidden">
+                <div class="flex items-center gap-2 mb-0.5">
+                  <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span class="text-[10px] font-bold text-emerald-300 uppercase tracking-wider">${t.status === 'lobby' ? 'Kutish Zali' : 'Jarayonda'}</span>
+                  <span class="text-[10px] bg-black/30 px-1.5 py-0.5 rounded font-mono font-bold text-white">PIN: ${t.code}</span>
+                </div>
+                <h4 class="text-sm font-extrabold text-white truncate">${t.title || 'Jonli Biologiya Testi'}</h4>
+                <p class="text-[11px] text-purple-200 truncate">O'qituvchi: ${t.teacherName || "O'qituvchi"} • Guruh: ${t.groupName || "Umumiy"}</p>
+              </div>
+              <a href="/student/live-test.html?code=${t.code}" 
+                 class="px-4 py-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs rounded-xl shadow-md transition flex items-center gap-1.5 flex-shrink-0">
+                <span>Kirish</span>
+                <i data-lucide="arrow-right" class="w-3.5 h-3.5"></i>
+              </a>
+            </div>
+          `).join("");
+        }
+        lucide.createIcons();
+      } catch (err) {
+        container.innerHTML = `<p class="text-xs text-purple-300">Faol testlarni tekshirishda xatolik yuz berdi.</p>`;
+      }
+    }
+
+    // PIN Quick Join Form
+    const pinForm = document.getElementById("student-pin-join-form");
+    if (pinForm) {
+      pinForm.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const pin = (document.getElementById("student-quick-pin").value || "").trim().replace(/\D/g, "");
+        if (pin.length !== 6) {
+          alert("Iltimos, 6 xonali PIN-kodni to'liq kiriting");
+          return;
+        }
+        window.location.href = `/student/live-test.html?code=${encodeURIComponent(pin)}`;
+      });
+    }
+
     loadLeveledTests();
+    loadStudentActiveSessions();
+    setInterval(loadStudentActiveSessions, 6000);
   </script>
 </body>
 </html>

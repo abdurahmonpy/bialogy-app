@@ -202,10 +202,23 @@ class TeacherTestModel(Base):
     classGrade = Column(String, nullable=True)
     description = Column(Text, nullable=True)
     teacherName = Column(String, nullable=True)
+    category = Column(String, default="Mavzulashtirilgan")
+    tags = Column(JSON, default=list)
+    questions = Column(JSON, default=list)
     createdAt = Column(BigInteger, default=lambda: int(time.time() * 1000))
     levels = Column(JSON, default=list)
 
     def to_dict(self) -> Dict[str, Any]:
+        qs = self.questions or []
+        if not qs and self.levels:
+            # Flatten levels into questions array for universal access
+            for lvl in self.levels:
+                diff = lvl.get("difficulty", "O'rtacha")
+                for q in lvl.get("questions", []):
+                    item = dict(q)
+                    item["difficulty"] = diff
+                    qs.append(item)
+
         return {
             "id": self.id,
             "subject": self.subject,
@@ -213,8 +226,103 @@ class TeacherTestModel(Base):
             "classGrade": self.classGrade,
             "description": self.description,
             "teacherName": self.teacherName,
+            "category": self.category or "Mavzulashtirilgan",
+            "tags": self.tags or [],
+            "questions": qs,
+            "totalQuestions": len(qs),
             "createdAt": self.createdAt,
             "levels": self.levels or []
+        }
+
+class LiveTestSessionModel(Base):
+    __tablename__ = "live_test_sessions"
+
+    id = Column(String, primary_key=True, index=True)
+    code = Column(String, unique=True, index=True) # 6-digit numeric join code
+    testId = Column(String, index=True)
+    testTitle = Column(String)
+    subject = Column(String, default="Biologiya")
+    classGrade = Column(String, nullable=True)
+    teacherId = Column(String, index=True)
+    teacherName = Column(String)
+    groupId = Column(String, nullable=True) # assigned group or "all"
+    groupName = Column(String, nullable=True)
+    status = Column(String, default="lobby") # lobby, active, paused, finished
+    settings = Column(JSON, default=dict)
+    questions = Column(JSON, default=list)
+    startTime = Column(BigInteger, default=0)
+    endTime = Column(BigInteger, default=0)
+    pausedAt = Column(BigInteger, default=0)
+    totalPausedDuration = Column(Integer, default=0)
+    timeExtendedSeconds = Column(Integer, default=0)
+    createdAt = Column(BigInteger, default=lambda: int(time.time() * 1000))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "code": self.code,
+            "testId": self.testId,
+            "testTitle": self.testTitle,
+            "subject": self.subject or "Biologiya",
+            "classGrade": self.classGrade or "",
+            "teacherId": self.teacherId,
+            "teacherName": self.teacherName,
+            "groupId": self.groupId,
+            "groupName": self.groupName or "Barcha o'quvchilar",
+            "status": self.status,
+            "settings": self.settings or {},
+            "questionsCount": len(self.questions or []),
+            "questions": self.questions or [],
+            "startTime": self.startTime,
+            "endTime": self.endTime,
+            "pausedAt": self.pausedAt,
+            "totalPausedDuration": self.totalPausedDuration or 0,
+            "timeExtendedSeconds": self.timeExtendedSeconds or 0,
+            "createdAt": self.createdAt
+        }
+
+class LiveParticipantModel(Base):
+    __tablename__ = "live_participants"
+
+    id = Column(String, primary_key=True, index=True)
+    sessionId = Column(String, index=True)
+    studentId = Column(String, index=True)
+    studentName = Column(String)
+    isGuest = Column(Integer, default=0)
+    isOnline = Column(Integer, default=1)
+    currentQuestionIndex = Column(Integer, default=0)
+    score = Column(Integer, default=0)
+    correctCount = Column(Integer, default=0)
+    incorrectCount = Column(Integer, default=0)
+    totalAnswered = Column(Integer, default=0)
+    answers = Column(JSON, default=dict) # { questionId: { answer, isCorrect, pointsEarned, timeSpentMs } }
+    cheatLogs = Column(JSON, default=list) # [ { type, time, count } ]
+    cheatCount = Column(Integer, default=0)
+    status = Column(String, default="lobby") # lobby, in_progress, submitted, timed_out
+    joinedAt = Column(BigInteger, default=lambda: int(time.time() * 1000))
+    finishedAt = Column(BigInteger, default=0)
+    lastActiveAt = Column(BigInteger, default=lambda: int(time.time() * 1000))
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "sessionId": self.sessionId,
+            "studentId": self.studentId,
+            "studentName": self.studentName,
+            "isGuest": bool(self.isGuest),
+            "isOnline": bool(self.isOnline),
+            "currentQuestionIndex": self.currentQuestionIndex,
+            "score": self.score,
+            "correctCount": self.correctCount,
+            "incorrectCount": self.incorrectCount,
+            "totalAnswered": self.totalAnswered,
+            "answers": self.answers or {},
+            "cheatLogs": self.cheatLogs or [],
+            "cheatCount": self.cheatCount or 0,
+            "status": self.status,
+            "joinedAt": self.joinedAt,
+            "finishedAt": self.finishedAt,
+            "lastActiveAt": self.lastActiveAt
         }
 
 class ResourceModel(Base):
@@ -311,6 +419,25 @@ def init_db():
             try:
                 with engine.connect() as conn:
                     conn.execute(text(f"ALTER TABLE resources ADD COLUMN \"{col_name}\" {col_type}"))
+                    conn.commit()
+            except Exception:
+                pass
+
+    # Ensure teacher_tests columns exist
+    test_columns = [
+        ("category", "VARCHAR DEFAULT 'Mavzulashtirilgan'"),
+        ("tags", "JSON"),
+        ("questions", "JSON")
+    ]
+    for col_name, col_type in test_columns:
+        try:
+            with engine.connect() as conn:
+                conn.execute(text(f"ALTER TABLE teacher_tests ADD COLUMN IF NOT EXISTS \"{col_name}\" {col_type}"))
+                conn.commit()
+        except Exception:
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text(f"ALTER TABLE teacher_tests ADD COLUMN \"{col_name}\" {col_type}"))
                     conn.commit()
             except Exception:
                 pass

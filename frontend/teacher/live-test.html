@@ -1,0 +1,886 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <title>Jonli Test Boshqaruvi | O'qituvchi Portali</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    @keyframes pulse-ring {
+      0% { transform: scale(0.95); opacity: 0.8; }
+      50% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(0.95); opacity: 0.8; }
+    }
+    .animate-pulse-ring { animation: pulse-ring 2s infinite ease-in-out; }
+  </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen flex flex-col overflow-x-hidden">
+
+  <!-- Top Navbar -->
+  <header class="h-16 border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-4 lg:px-8 flex items-center justify-between flex-shrink-0 z-30">
+    <div class="flex items-center gap-3">
+      <a href="/teacher/test.html" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer" title="Test Markaziga qaytish">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+      </a>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></span>
+          <h1 class="text-sm font-extrabold tracking-tight text-white" id="header-test-title">Jonli Test Sessiyasi</h1>
+          <span id="header-status-badge" class="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+            Lobby Kutilmoqda
+          </span>
+        </div>
+        <p class="text-[11px] text-slate-400" id="header-group-subtitle">Guruh: Yuklanmoqda...</p>
+      </div>
+    </div>
+
+    <!-- Live Controls Bar (Visible during active test) -->
+    <div id="top-controls-bar" class="hidden flex items-center gap-2">
+      <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-800/90 border border-slate-700 rounded-xl text-xs font-bold text-amber-300">
+        <i data-lucide="clock" class="w-4 h-4 text-amber-400"></i>
+        <span id="countdown-timer">15:00</span>
+      </div>
+
+      <button type="button" id="btn-pause-resume" onclick="togglePauseSession()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="pause" id="icon-pause" class="w-3.5 h-3.5"></i>
+        <span id="text-pause">To'xtatish</span>
+      </button>
+
+      <button type="button" onclick="extendTime(300)" class="px-3 py-1.5 bg-indigo-600/30 hover:bg-indigo-600/50 text-indigo-300 border border-indigo-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer" title="+5 daqiqa vaqt qo'shish">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+        <span>+5 daq</span>
+      </button>
+
+      <button type="button" onclick="endLiveSession()" class="px-3 py-1.5 bg-rose-600/30 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="square" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline">Yakunlash</span>
+      </button>
+
+      <button type="button" onclick="toggleAudioMute()" id="btn-audio-toggle" class="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition cursor-pointer" title="Ovozni yoqish / o'chirish">
+        <i data-lucide="volume-2" id="icon-audio" class="w-4 h-4"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- ============================================================= -->
+  <!-- PHASE 1: LOBBY SCREEN                                        -->
+  <!-- ============================================================= -->
+  <main id="lobby-section" class="flex-1 flex flex-col items-center justify-center p-4 lg:p-8 max-w-5xl mx-auto w-full relative">
+    
+    <!-- Lobby Top Banner -->
+    <div class="text-center space-y-3 mb-8">
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-indigo-300 text-xs font-bold">
+        <i data-lucide="sparkles" class="w-4 h-4 text-amber-400"></i>
+        <span>Kahoot Uslubidagi Jonli Test Markazi</span>
+      </div>
+      <h2 class="text-2xl sm:text-4xl font-black text-white tracking-tight" id="lobby-test-title">
+        Biologiya Jonli Testi
+      </h2>
+      <p class="text-xs sm:text-sm text-slate-400 max-w-md mx-auto" id="lobby-group-name">
+        O'quvchilar kod yoki QR kod orqali qo'shilishi mumkin
+      </p>
+    </div>
+
+    <!-- Code & QR Code Card -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 w-full max-w-3xl mb-8">
+      <!-- 6-digit Code Box -->
+      <div class="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-6 sm:p-8 flex flex-col items-center justify-center text-center shadow-2xl relative overflow-hidden group">
+        <div class="absolute -right-10 -bottom-10 w-32 h-32 bg-indigo-500/10 rounded-full blur-2xl"></div>
+        <span class="text-xs font-bold uppercase tracking-widest text-slate-400 mb-2">Qo'shilish Kodi:</span>
+        <div id="display-join-code" onclick="copyJoinCode()" class="text-5xl sm:text-6xl font-black tracking-widest font-mono text-amber-400 hover:scale-105 transition cursor-pointer select-all drop-shadow-md">
+          ------
+        </div>
+        <p class="text-[11px] text-slate-400 mt-3 flex items-center gap-1.5">
+          <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          <span>Kodni nusxalash uchun bosing</span>
+        </p>
+
+        <div class="mt-4 pt-4 border-t border-slate-700/60 w-full flex items-center justify-between text-xs">
+          <span class="text-slate-400">To'g'ridan-to'g'ri havola:</span>
+          <button type="button" onclick="copyDirectLink()" class="px-2.5 py-1 bg-indigo-600/30 hover:bg-indigo-600 text-indigo-300 hover:text-white rounded-lg text-[11px] font-bold transition flex items-center gap-1 cursor-pointer">
+            <i data-lucide="link" class="w-3 h-3"></i>
+            <span>Havolani nusxalash</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- QR Code Box -->
+      <div class="bg-slate-800/80 border border-slate-700/80 rounded-3xl p-6 flex flex-col items-center justify-center text-center shadow-2xl">
+        <div id="qr-box-container" class="p-3 bg-white rounded-2xl shadow-inner mb-3 min-w-[184px] min-h-[184px] flex items-center justify-center">
+          <canvas id="qr-canvas" width="160" height="160" class="rounded-xl"></canvas>
+        </div>
+        <p class="text-xs font-bold text-slate-200">Kamera orqali skaner qiling</p>
+        <p class="text-[11px] text-slate-400 mt-0.5">Telefon orqali 1 soniyada testga kiring</p>
+      </div>
+    </div>
+
+    <!-- Joined Participants Bar & Grid -->
+    <div class="w-full max-w-3xl bg-slate-800/60 border border-slate-700/60 rounded-3xl p-6 shadow-xl mb-8">
+      <div class="flex items-center justify-between pb-3 border-b border-slate-700 mb-4">
+        <div class="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-slate-300">
+          <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i>
+          <span>Qo'shilgan O'quvchilar:</span>
+        </div>
+        <span class="px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 text-xs font-black border border-emerald-500/30" id="lobby-participant-count">
+          0 nafar
+        </span>
+      </div>
+
+      <div id="lobby-students-grid" class="flex flex-wrap gap-2.5 min-h-[90px] items-center justify-center p-2">
+        <div class="text-slate-500 text-xs italic flex items-center gap-2">
+          <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-indigo-400"></i>
+          <span>O'quvchilar qo'shilishi kutilmoqda...</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Big Start Test Button -->
+    <div class="w-full max-w-md">
+      <button type="button" id="btn-start-test" onclick="startLiveTest()"
+        class="w-full py-4 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-600 hover:opacity-95 text-white font-black rounded-2xl text-base transition shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-3 cursor-pointer animate-pulse-ring">
+        <i data-lucide="play" class="w-5 h-5 fill-white"></i>
+        <span>TESTNI BOSHLASH (Hamma uchun bir vaqtda)</span>
+      </button>
+    </div>
+
+  </main>
+
+  <!-- ============================================================= -->
+  <!-- PHASE 2: LIVE MONITORING DASHBOARD (During active test)       -->
+  <!-- ============================================================= -->
+  <main id="monitor-section" class="hidden flex-1 p-4 lg:p-8 max-w-7xl mx-auto w-full space-y-6">
+    
+    <!-- Real-time KPI Stats Cards -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div class="p-4 bg-slate-800/80 border border-slate-700 rounded-2xl shadow-xs">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-1">
+          <span>Qatnashuvchilar</span>
+          <i data-lucide="users" class="w-4 h-4 text-indigo-400"></i>
+        </div>
+        <div class="text-xl sm:text-2xl font-black text-white" id="stat-online-count">0 / 0</div>
+        <div class="text-[10px] text-emerald-400 font-semibold mt-0.5">Jonli qatnashmoqda</div>
+      </div>
+
+      <div class="p-4 bg-slate-800/80 border border-slate-700 rounded-2xl shadow-xs">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-1">
+          <span>O'rtacha Ball</span>
+          <i data-lucide="award" class="w-4 h-4 text-amber-400"></i>
+        </div>
+        <div class="text-xl sm:text-2xl font-black text-amber-400" id="stat-avg-score">0</div>
+        <div class="text-[10px] text-slate-400 mt-0.5">Aniqlik: <span id="stat-avg-acc">0%</span></div>
+      </div>
+
+      <div class="p-4 bg-slate-800/80 border border-slate-700 rounded-2xl shadow-xs">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-1">
+          <span>Tugatganlar</span>
+          <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+        </div>
+        <div class="text-xl sm:text-2xl font-black text-emerald-400" id="stat-finished-count">0 / 0</div>
+        <div class="text-[10px] text-slate-400 mt-0.5" id="stat-completion-pct">0% yakunlandi</div>
+      </div>
+
+      <div class="p-4 bg-slate-800/80 border border-slate-700 rounded-2xl shadow-xs">
+        <div class="flex items-center justify-between text-slate-400 text-xs font-semibold mb-1">
+          <span>Eng Qiyin Savol</span>
+          <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-400"></i>
+        </div>
+        <div class="text-xs font-bold text-rose-400 truncate mt-1" id="stat-hardest-q">Aniqlanmoqda...</div>
+        <div class="text-[10px] text-slate-400 mt-0.5" id="stat-hardest-sub">0 ta xato</div>
+      </div>
+    </div>
+
+    <!-- Main Grid: Left Student Cards (65%) | Right Live Leaderboard (35%) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      
+      <!-- Left Column: Student Progress & Error Tracker -->
+      <div class="lg:col-span-8 bg-slate-800/60 border border-slate-700 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+          <div class="flex items-center gap-2">
+            <i data-lucide="activity" class="w-4 h-4 text-emerald-400"></i>
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-slate-200">
+              O'quvchilar Jarayoni & Xatolar Tahlili
+            </h3>
+          </div>
+          <span class="text-[11px] text-slate-400 font-semibold" id="monitor-student-count">0 nafar</span>
+        </div>
+
+        <div id="monitor-students-list" class="space-y-3 max-h-[580px] overflow-y-auto custom-scroll pr-1">
+          <div class="text-center py-12 text-slate-500 text-xs">O'quvchilar natijalari kutilmoqda...</div>
+        </div>
+      </div>
+
+      <!-- Right Column: Kahoot-style Live Leaderboard -->
+      <div class="lg:col-span-4 bg-gradient-to-b from-indigo-950/60 to-slate-900 border border-indigo-500/30 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-700">
+          <div class="flex items-center gap-2">
+            <i data-lucide="trophy" class="w-4 h-4 text-amber-400"></i>
+            <h3 class="text-xs font-extrabold uppercase tracking-wider text-amber-300">
+              Jonli Peshqadamlar (Leaderboard)
+            </h3>
+          </div>
+          <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+        </div>
+
+        <div id="leaderboard-list" class="space-y-2.5 max-h-[580px] overflow-y-auto custom-scroll pr-1">
+          <div class="text-center py-12 text-slate-500 text-xs">Peshqadamlar shakllanmoqda...</div>
+        </div>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ============================================================= -->
+  <!-- PHASE 3: FINAL REPORT & RESULTS                               -->
+  <!-- ============================================================= -->
+  <main id="results-section" class="hidden flex-1 p-4 lg:p-8 max-w-5xl mx-auto w-full space-y-6">
+    
+    <!-- Top Celebration Card -->
+    <div class="bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 rounded-3xl p-6 sm:p-8 text-center shadow-2xl relative overflow-hidden">
+      <div class="inline-flex p-3 bg-white/20 backdrop-blur-md rounded-2xl mb-3 shadow-inner">
+        <i data-lucide="trophy" class="w-8 h-8 text-amber-300"></i>
+      </div>
+      <h2 class="text-2xl sm:text-3xl font-black text-white">Test Muvaffaqiyatli Yakunlandi!</h2>
+      <p class="text-xs sm:text-sm text-white/90 max-w-md mx-auto mt-1" id="results-summary-text">
+        Barcha o'quvchilar natijalari hisoblandi va saqlandi
+      </p>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center justify-center gap-3 mt-6 flex-wrap">
+        <a id="btn-export-excel" href="#" class="px-5 py-2.5 bg-white hover:bg-slate-100 text-indigo-700 font-bold rounded-xl text-xs transition shadow-md flex items-center gap-2 cursor-pointer">
+          <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i>
+          <span>Excelga yuklab olish (CSV)</span>
+        </a>
+        <button type="button" onclick="window.print()" class="px-5 py-2.5 bg-white/20 hover:bg-white/30 text-white font-bold rounded-xl text-xs backdrop-blur-md transition flex items-center gap-2 cursor-pointer">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          <span>Chop etish / PDF</span>
+        </button>
+        <button type="button" onclick="toggleShowResultsToStudents()" id="btn-toggle-results" class="px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-slate-900 font-bold rounded-xl text-xs transition flex items-center gap-2 cursor-pointer">
+          <i data-lucide="eye" class="w-4 h-4"></i>
+          <span id="text-toggle-results">O'quvchilarga javoblarni ko'rsatish</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Final Results Table -->
+    <div class="bg-slate-800/80 border border-slate-700 rounded-3xl overflow-hidden shadow-xl">
+      <div class="p-4 border-b border-slate-700 flex items-center justify-between">
+        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">O'quvchilar Natijalari Ro'yxati</h3>
+        <span class="text-[11px] text-slate-400" id="results-total-count">0 nafar</span>
+      </div>
+
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-900/60 text-slate-400 font-bold border-b border-slate-700">
+            <tr>
+              <th class="p-3.5">O'rin</th>
+              <th class="p-3.5">O'quvchi F.I.Sh.</th>
+              <th class="p-3.5">Ball</th>
+              <th class="p-3.5">To'g'ri / Noto'g'ri</th>
+              <th class="p-3.5">Aniqlik (%)</th>
+              <th class="p-3.5">Qoidabuzarlik</th>
+              <th class="p-3.5">Holat</th>
+            </tr>
+          </thead>
+          <tbody id="results-table-body" class="divide-y divide-slate-700/60 text-slate-200">
+            <!-- Populated dynamically -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Question Accuracy Breakdown -->
+    <div class="bg-slate-800/80 border border-slate-700 rounded-3xl p-6 shadow-xl space-y-4">
+      <h3 class="text-xs font-bold uppercase tracking-wider text-slate-300">Savollar Bo'yicha Tahlil (Qiyinchilik Darajasi)</h3>
+      <div id="questions-analysis-list" class="space-y-3">
+        <!-- Populated dynamically -->
+      </div>
+    </div>
+
+  </main>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    const currentUser = Auth.requireAuth("teacher");
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get("sessionId");
+
+    if (!sessionId) {
+      alert("Sessiya ID topilmadi!");
+      window.location.href = "/teacher/test.html";
+    }
+
+    let sessionData = null;
+    let participants = [];
+    let ws = null;
+    let isPaused = false;
+    let audioMuted = false;
+    let audioCtx = null;
+    let timerInterval = null;
+
+    // Web Audio API Synthesizer (Zero MP3 files needed!)
+    function playBeep(frequency = 520, duration = 0.15, type = "sine") {
+      if (audioMuted) return;
+      try {
+        if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        if (audioCtx.state === "suspended") audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(frequency, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + duration);
+      } catch (e) {}
+    }
+
+    function playChord(notes = [440, 554.37, 659.25]) {
+      notes.forEach((freq, idx) => {
+        setTimeout(() => playBeep(freq, 0.25, "triangle"), idx * 80);
+      });
+    }
+
+    function toggleAudioMute() {
+      audioMuted = !audioMuted;
+      document.getElementById("icon-audio").setAttribute("data-lucide", audioMuted ? "volume-x" : "volume-2");
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Initialize WebSocket Connection
+    function initWebSocket() {
+      const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsUrl = `${protocol}//${window.location.host}/ws/live-test/${sessionId}`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log("WebSocket connected to session:", sessionId);
+        // Ping every 25 seconds to keep connection alive
+        setInterval(() => {
+          if (ws && ws.readyState === WebSocket.OPEN) {
+            ws.send(JSON.stringify({ type: "ping" }));
+          }
+        }, 25000);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        } catch (e) {}
+      };
+
+      ws.onclose = () => {
+        console.log("WebSocket closed, reconnecting in 2s...");
+        setTimeout(initWebSocket, 2000);
+      };
+    }
+
+    function handleWebSocketMessage(data) {
+      if (data.type === "lobby_update") {
+        playBeep(660, 0.12);
+        participants = data.participants || [];
+        renderLobbyParticipants();
+      } else if (data.type === "test_started") {
+        playChord([523.25, 659.25, 783.99]);
+        transitionToMonitorView(data.startTime, data.endTime);
+      } else if (data.type === "progress_update" || data.type === "leaderboard_update") {
+        loadMonitorData();
+      } else if (data.type === "cheat_alert") {
+        playBeep(220, 0.4, "sawtooth");
+        showCheatAlertToast(data.studentName, data.cheatType, data.cheatCount);
+        loadMonitorData();
+      } else if (data.type === "test_paused") {
+        isPaused = true;
+        updatePauseButtonUI();
+      } else if (data.type === "test_resumed") {
+        isPaused = false;
+        updatePauseButtonUI();
+        if (data.newEndTime) sessionData.endTime = data.newEndTime;
+      } else if (data.type === "time_extended") {
+        if (data.newEndTime) sessionData.endTime = data.newEndTime;
+        playChord([440, 880]);
+        alert("⏱ Test vaqti 5 daqiqaga uzaytirildi!");
+      } else if (data.type === "test_ended") {
+        transitionToResultsView();
+      }
+    }
+
+    // Load initial Session info
+    async function loadSession() {
+      try {
+        const res = await fetch(`/api/live-test/session/${sessionId}`, {
+          headers: { "X-User-Role": "teacher", "X-User-Id": currentUser.id }
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          alert("Sessiya yuklanmadi");
+          return;
+        }
+
+        sessionData = data.session;
+        document.getElementById("header-test-title").textContent = sessionData.testTitle;
+        document.getElementById("header-group-subtitle").textContent = `Guruh: ${sessionData.groupName} • ${sessionData.subject || 'Biologiya'}`;
+        document.getElementById("lobby-test-title").textContent = sessionData.testTitle;
+        document.getElementById("lobby-group-name").textContent = `Guruh: ${sessionData.groupName} • ${sessionData.questionsCount || 0} ta savol`;
+        document.getElementById("display-join-code").textContent = sessionData.code;
+
+        document.getElementById("btn-export-excel").href = `/api/live-test/session/${sessionData.id}/export-csv`;
+
+        // Generate QR code on Canvas
+        renderQRCode(sessionData.code);
+
+        if (sessionData.status === "active" || sessionData.status === "paused") {
+          transitionToMonitorView(sessionData.startTime, sessionData.endTime);
+        } else if (sessionData.status === "finished") {
+          transitionToResultsView();
+        } else {
+          loadMonitorData();
+        }
+      } catch (err) {
+        console.error("Load session error:", err);
+      }
+    }
+
+    // Real Scannable QR Code Generator (Uses clean QR image with canvas fallback)
+    function renderQRCode(code) {
+      const joinUrl = `${window.location.origin}/join.html?code=${code}`;
+      const box = document.getElementById("qr-box-container");
+      if (!box) return;
+
+      const qrImg = new Image();
+      qrImg.crossOrigin = "anonymous";
+      qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(joinUrl)}&margin=4`;
+      qrImg.className = "w-40 h-40 rounded-xl object-contain";
+      qrImg.alt = "QR Code";
+
+      qrImg.onload = function() {
+        box.innerHTML = "";
+        box.appendChild(qrImg);
+      };
+
+      qrImg.onerror = function() {
+        // Fallback to local canvas rendering
+        const canvas = document.getElementById("qr-canvas");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, 160, 160);
+        ctx.fillStyle = "#0f172a";
+        function drawCornerFinder(x, y) {
+          ctx.fillRect(x, y, 40, 40);
+          ctx.fillStyle = "#ffffff";
+          ctx.fillRect(x + 6, y + 6, 28, 28);
+          ctx.fillStyle = "#0f172a";
+          ctx.fillRect(x + 12, y + 12, 16, 16);
+        }
+        drawCornerFinder(10, 10);
+        drawCornerFinder(110, 10);
+        drawCornerFinder(10, 110);
+        const seed = parseInt(code) || 123456;
+        for (let r = 0; r < 20; r++) {
+          for (let c = 0; c < 20; c++) {
+            if ((r < 7 && c < 7) || (r < 7 && c > 12) || (r > 12 && c < 7)) continue;
+            if (((r * 31 + c * 17 + seed) % 7) < 3) {
+              ctx.fillRect(10 + c * 7, 10 + r * 7, 6, 6);
+            }
+          }
+        }
+      };
+    }
+
+    // Render Lobby Participants
+    function renderLobbyParticipants() {
+      const grid = document.getElementById("lobby-students-grid");
+      const countEl = document.getElementById("lobby-participant-count");
+      countEl.textContent = `${participants.length} nafar`;
+
+      if (participants.length === 0) {
+        grid.innerHTML = `
+          <div class="text-slate-500 text-xs italic flex items-center gap-2">
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-indigo-400"></i>
+            <span>O'quvchilar qo'shilishi kutilmoqda...</span>
+          </div>
+        `;
+        if (window.lucide) lucide.createIcons();
+        return;
+      }
+
+      grid.innerHTML = participants.map(p => `
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 bg-slate-700/80 hover:bg-slate-700 border border-slate-600 rounded-xl text-xs font-bold text-white shadow-xs animate-in zoom-in-75 duration-150">
+          <span class="w-2 h-2 rounded-full bg-emerald-400"></span>
+          <span>${escapeHtml(p.studentName)}</span>
+          ${p.isGuest ? '<span class="text-[9px] bg-slate-800 text-slate-400 px-1 rounded">Mehmon</span>' : ''}
+        </div>
+      `).join("");
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    // Start Live Test
+    window.startLiveTest = async function() {
+      if (participants.length === 0) {
+        if (!confirm("Hali hech kim qo'shilmadi. Shunda ham testni boshlaysizmi?")) return;
+      }
+      try {
+        const res = await fetch(`/api/live-test/session/${sessionId}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-User-Role": "teacher", "X-User-Id": currentUser.id },
+          body: JSON.stringify({ action: "start" })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+          playChord([523.25, 659.25, 783.99]);
+        }
+      } catch (e) {
+        alert("Xatolik: " + e.message);
+      }
+    };
+
+    function transitionToMonitorView(startTime, endTime) {
+      document.getElementById("lobby-section").classList.add("hidden");
+      document.getElementById("results-section").classList.add("hidden");
+      document.getElementById("monitor-section").classList.remove("hidden");
+      document.getElementById("top-controls-bar").classList.remove("hidden");
+      document.getElementById("header-status-badge").textContent = "Jonli Faol";
+      document.getElementById("header-status-badge").className = "px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30";
+
+      startCountdown(endTime);
+      loadMonitorData();
+    }
+
+    function startCountdown(endTime) {
+      if (timerInterval) clearInterval(timerInterval);
+      const timerEl = document.getElementById("countdown-timer");
+
+      function update() {
+        if (isPaused) return;
+        const now = Date.now();
+        const diff = Math.max(0, endTime - now);
+        const mins = Math.floor(diff / 60000);
+        const secs = Math.floor((diff % 60000) / 1000);
+        timerEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+        if (diff <= 0) {
+          clearInterval(timerInterval);
+          transitionToResultsView();
+        }
+      }
+      update();
+      timerInterval = setInterval(update, 1000);
+    }
+
+    // Load Live Monitor Data
+    async function loadMonitorData() {
+      try {
+        const res = await fetch(`/api/live-test/session/${sessionId}/monitor`, {
+          headers: { "X-User-Role": "teacher", "X-User-Id": currentUser.id }
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) return;
+
+        sessionData = data.session;
+        const parts = data.participants || [];
+        const summary = data.summary || {};
+
+        // Update stats cards
+        document.getElementById("stat-online-count").textContent = `${data.onlineCount || 0} / ${data.totalParticipants || 0}`;
+        document.getElementById("stat-avg-score").textContent = summary.averageScore || 0;
+        document.getElementById("stat-avg-acc").textContent = `${summary.averageAccuracy || 0}%`;
+        document.getElementById("stat-finished-count").textContent = `${summary.finishedCount || 0} / ${data.totalParticipants || 0}`;
+        document.getElementById("stat-completion-pct").textContent = `${summary.completionRate || 0}% yakunlandi`;
+
+        if (summary.hardestQuestion) {
+          document.getElementById("stat-hardest-q").textContent = summary.hardestQuestion.question || "Savol";
+          document.getElementById("stat-hardest-sub").textContent = `${summary.hardestQuestion.wrongCount} ta xato javob`;
+        } else {
+          document.getElementById("stat-hardest-q").textContent = "Hozircha xato yo'q";
+          document.getElementById("stat-hardest-sub").textContent = "Barcha javoblar to'g'ri";
+        }
+
+        renderMonitorStudentCards(parts);
+        renderLeaderboard(data.leaderboard || []);
+      } catch (e) {}
+    }
+
+    function renderMonitorStudentCards(parts) {
+      const listEl = document.getElementById("monitor-students-list");
+      document.getElementById("monitor-student-count").textContent = `${parts.length} nafar`;
+
+      if (parts.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-12 text-slate-500 text-xs">O'quvchilar natijalari kutilmoqda...</div>`;
+        return;
+      }
+
+      listEl.innerHTML = parts.map(p => {
+        const isOnline = p.isOnline;
+        const cheatBadge = p.cheatCount > 0 ?
+          `<span class="px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 text-[10px] font-bold border border-rose-500/30 flex items-center gap-1">
+             <i data-lucide="shield-alert" class="w-3 h-3 text-rose-400"></i> ${p.cheatCount} marta chetlandi!
+           </span>` : '';
+
+        const mistakesBadges = (p.wrongQuestions || []).map(qKey => `
+          <span class="px-1.5 py-0.5 bg-rose-500/20 text-rose-300 rounded text-[9px] font-bold">❌ S${qKey}</span>
+        `).join("");
+
+        return `
+          <div class="p-3.5 bg-slate-900/60 border border-slate-700/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:border-slate-600 transition">
+            <div class="flex items-center gap-3 min-w-0">
+              <div class="w-8 h-8 rounded-xl ${isOnline ? 'bg-indigo-600' : 'bg-slate-700'} text-white font-bold flex items-center justify-center text-xs flex-shrink-0">
+                ${p.studentName?.[0] || 'O'}
+              </div>
+              <div class="min-w-0">
+                <div class="flex items-center gap-2">
+                  <span class="text-xs font-bold text-white truncate">${escapeHtml(p.studentName)}</span>
+                  <span class="w-2 h-2 rounded-full ${isOnline ? 'bg-emerald-400 animate-pulse' : 'bg-slate-500'}"></span>
+                  ${cheatBadge}
+                </div>
+                <div class="flex items-center gap-2 mt-0.5 text-[10px] text-slate-400">
+                  <span>Ball: <strong class="text-amber-400">${p.score}</strong></span>
+                  <span>•</span>
+                  <span>Aniqlik: <strong class="text-emerald-400">${p.accuracyPct}%</strong></span>
+                  <span>•</span>
+                  <span>Javoblar: ${p.totalAnswered} ta</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Progress & Live Errors -->
+            <div class="flex items-center gap-3 sm:text-right">
+              <div class="flex-1 sm:w-36 space-y-1">
+                <div class="flex items-center justify-between text-[10px] font-bold text-slate-400">
+                  <span>Jarayon</span>
+                  <span>${p.progressPct}%</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div class="bg-gradient-to-r from-emerald-500 to-indigo-500 h-full transition-all duration-300" style="width: ${p.progressPct}%"></div>
+                </div>
+              </div>
+
+              <div class="flex items-center gap-1 flex-wrap max-w-[120px]">
+                ${mistakesBadges || '<span class="text-[10px] text-emerald-400 font-semibold">Xatosiz ✨</span>'}
+              </div>
+            </div>
+          </div>
+        `;
+      }).join("");
+
+      if (window.lucide) lucide.createIcons();
+    }
+
+    function renderLeaderboard(leaderboard) {
+      const listEl = document.getElementById("leaderboard-list");
+      if (leaderboard.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-12 text-slate-500 text-xs">Peshqadamlar shakllanmoqda...</div>`;
+        return;
+      }
+
+      listEl.innerHTML = leaderboard.map((p, idx) => {
+        let rankBadge = `<span class="w-6 h-6 rounded-lg bg-slate-800 text-slate-400 flex items-center justify-center font-bold text-xs">${idx + 1}</span>`;
+        if (idx === 0) rankBadge = `<span class="w-6 h-6 rounded-lg bg-amber-500 text-slate-900 flex items-center justify-center font-black text-xs shadow-xs">🥇</span>`;
+        if (idx === 1) rankBadge = `<span class="w-6 h-6 rounded-lg bg-slate-300 text-slate-900 flex items-center justify-center font-black text-xs shadow-xs">🥈</span>`;
+        if (idx === 2) rankBadge = `<span class="w-6 h-6 rounded-lg bg-amber-700 text-white flex items-center justify-center font-black text-xs shadow-xs">🥉</span>`;
+
+        return `
+          <div class="p-3 bg-slate-900/80 border border-indigo-900/60 rounded-2xl flex items-center justify-between gap-2.5 transition hover:scale-[1.02]">
+            <div class="flex items-center gap-2.5 min-w-0">
+              ${rankBadge}
+              <div class="min-w-0">
+                <div class="text-xs font-bold text-white truncate">${escapeHtml(p.studentName)}</div>
+                <div class="text-[10px] text-slate-400 font-medium">${p.correctCount || 0} ta to'g'ri</div>
+              </div>
+            </div>
+            <div class="text-right flex-shrink-0">
+              <span class="text-xs font-black text-amber-400 font-mono">${p.score}</span>
+              <span class="text-[9px] text-slate-400 block">ball</span>
+            </div>
+          </div>
+        `;
+      }).join("");
+    }
+
+    // Teacher Control Actions
+    window.togglePauseSession = async function() {
+      const action = isPaused ? "resume" : "pause";
+      try {
+        await fetch(`/api/live-test/session/${sessionId}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-User-Role": "teacher", "X-User-Id": currentUser.id },
+          body: JSON.stringify({ action })
+        });
+      } catch (e) {}
+    };
+
+    function updatePauseButtonUI() {
+      const btn = document.getElementById("btn-pause-resume");
+      const icon = document.getElementById("icon-pause");
+      const text = document.getElementById("text-pause");
+      if (isPaused) {
+        btn.className = "px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-slate-900 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer";
+        icon.setAttribute("data-lucide", "play");
+        text.textContent = "Davom ettirish";
+      } else {
+        btn.className = "px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer";
+        icon.setAttribute("data-lucide", "pause");
+        text.textContent = "To'xtatish";
+      }
+      if (window.lucide) lucide.createIcons();
+    }
+
+    window.extendTime = async function(seconds = 300) {
+      try {
+        await fetch(`/api/live-test/session/${sessionId}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-User-Role": "teacher", "X-User-Id": currentUser.id },
+          body: JSON.stringify({ action: "extend_time", seconds })
+        });
+      } catch (e) {}
+    };
+
+    window.endLiveSession = async function() {
+      if (!confirm("Haqiqatan ham barcha uchun testni yakunlamoqchimisiz?")) return;
+      try {
+        await fetch(`/api/live-test/session/${sessionId}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-User-Role": "teacher", "X-User-Id": currentUser.id },
+          body: JSON.stringify({ action: "end" })
+        });
+        transitionToResultsView();
+      } catch (e) {}
+    };
+
+    // Transition to Results Screen
+    async function transitionToResultsView() {
+      if (timerInterval) clearInterval(timerInterval);
+      document.getElementById("lobby-section").classList.add("hidden");
+      document.getElementById("monitor-section").classList.add("hidden");
+      document.getElementById("top-controls-bar").classList.add("hidden");
+      document.getElementById("results-section").classList.remove("hidden");
+      document.getElementById("header-status-badge").textContent = "Test Yakunlangan";
+      document.getElementById("header-status-badge").className = "px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-700 text-slate-300";
+
+      // Fire confetti celebration
+      try {
+        confetti({ particleCount: 100, spread: 70, origin: { y: 0.6 } });
+      } catch (e) {}
+
+      loadFinalResults();
+    }
+
+    async function loadFinalResults() {
+      try {
+        const res = await fetch(`/api/live-test/session/${sessionId}/results`, {
+          headers: { "X-User-Role": "teacher", "X-User-Id": currentUser.id }
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) return;
+
+        const parts = data.participants || [];
+        const questions = data.questions || [];
+        const summary = data.summary || {};
+
+        document.getElementById("results-summary-text").textContent =
+          `Jami ${parts.length} nafar o'quvchi qatnashdi. O'rtacha ball: ${summary.averageScore || 0}, o'rtacha aniqlik: ${summary.averageAccuracy || 0}%.`;
+        document.getElementById("results-total-count").textContent = `${parts.length} nafar`;
+
+        // Render table rows
+        const tbody = document.getElementById("results-table-body");
+        tbody.innerHTML = parts.map(p => `
+          <tr class="hover:bg-slate-800/50 transition">
+            <td class="p-3.5 font-bold text-amber-400 font-mono">#${p.rank}</td>
+            <td class="p-3.5 font-bold text-white">${escapeHtml(p.studentName)}</td>
+            <td class="p-3.5 font-bold text-amber-400 font-mono">${p.score} ball</td>
+            <td class="p-3.5">${p.correctCount} / ${p.incorrectCount}</td>
+            <td class="p-3.5 font-bold text-emerald-400">${p.accuracyPct}%</td>
+            <td class="p-3.5">${p.cheatCount > 0 ? `<span class="text-rose-400 font-bold">${p.cheatCount} ta</span>` : '<span class="text-slate-500">0</span>'}</td>
+            <td class="p-3.5">
+              <span class="px-2 py-0.5 rounded-full text-[10px] font-bold ${p.status === 'submitted' ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-700 text-slate-300'}">
+                ${p.status === 'submitted' ? 'Yakunlagan' : 'Kutilgan'}
+              </span>
+            </td>
+          </tr>
+        `).join("");
+
+        // Render Question Breakdown
+        const qList = document.getElementById("questions-analysis-list");
+        qList.innerHTML = questions.map((q, idx) => `
+          <div class="p-4 bg-slate-900/60 border border-slate-700/80 rounded-2xl space-y-2">
+            <div class="flex items-center justify-between text-xs">
+              <span class="font-extrabold text-indigo-400">${idx + 1}-Savol</span>
+              <span class="font-bold ${q.accuracyPct >= 70 ? 'text-emerald-400' : q.accuracyPct >= 40 ? 'text-amber-400' : 'text-rose-400'}">
+                To'g'ri javob: ${q.accuracyPct}% (${q.correctAttempts}/${q.totalAttempts})
+              </span>
+            </div>
+            <p class="text-xs font-bold text-white">${escapeHtml(q.question)}</p>
+            <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+              <div class="h-full ${q.accuracyPct >= 70 ? 'bg-emerald-500' : q.accuracyPct >= 40 ? 'bg-amber-500' : 'bg-rose-500'}" style="width: ${q.accuracyPct}%"></div>
+            </div>
+          </div>
+        `).join("");
+      } catch (e) {}
+    }
+
+    window.toggleShowResultsToStudents = async function() {
+      try {
+        const res = await fetch(`/api/live-test/session/${sessionId}/action`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-User-Role": "teacher", "X-User-Id": currentUser.id },
+          body: JSON.stringify({ action: "toggle_show_results" })
+        });
+        const data = await res.json();
+        const isShown = data.session?.settings?.showResultsToStudents;
+        alert(isShown ? "O'quvchilarga to'g'ri javoblar ko'rsatiladigan qilindi!" : "O'quvchilarga to'g'ri javoblar yashirildi.");
+      } catch (e) {}
+    };
+
+    function showCheatAlertToast(name, type, count) {
+      const toast = document.createElement("div");
+      toast.className = "fixed bottom-5 right-5 z-50 p-4 bg-rose-600 text-white rounded-2xl shadow-2xl border border-rose-400 flex items-center gap-3 animate-bounce";
+      toast.innerHTML = `
+        <i data-lucide="shield-alert" class="w-5 h-5 flex-shrink-0"></i>
+        <div class="text-xs">
+          <div class="font-bold">Qoidabuzarlik: ${escapeHtml(name)}</div>
+          <div class="text-[11px] text-rose-100">${type === 'tab_switch' ? 'Boshqa oynaga o\'tdi' : 'Fullscreen dan chiqdi'} (${count}-marta)</div>
+        </div>
+      `;
+      document.body.appendChild(toast);
+      if (window.lucide) lucide.createIcons();
+      setTimeout(() => toast.remove(), 6000);
+    }
+
+    window.copyJoinCode = function() {
+      navigator.clipboard.writeText(sessionData.code).then(() => {
+        alert("Kod nusxalandi: " + sessionData.code);
+      });
+    };
+
+    window.copyDirectLink = function() {
+      const link = `${window.location.origin}/student/live-test.html?code=${sessionData.code}`;
+      navigator.clipboard.writeText(link).then(() => {
+        alert("Havola nusxalandi: " + link);
+      });
+    };
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    loadSession();
+    initWebSocket();
+  </script>
+</body>
+</html>

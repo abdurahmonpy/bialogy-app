@@ -170,4 +170,123 @@
     }
     if (window.lucide) window.lucide.createIcons();
   };
+
+  // ==============================================================
+  // Real-Time Active Live Test Notification System
+  // ==============================================================
+  let activeTestPollInterval = null;
+  let lastNotifiedSessionId = null;
+
+  function initLiveTestWatcher() {
+    if (window.location.pathname.includes("/student/live-test.html") || window.location.pathname.includes("/join.html")) {
+      return; // Already in test runner or join page
+    }
+
+    const checkActiveTests = async () => {
+      const user = window.Auth ? window.Auth.getCurrentUser() : null;
+      if (!user || !user.id || user.role === "teacher") return;
+
+      try {
+        const res = await fetch("/api/student/active-live-tests", {
+          headers: {
+            "X-User-Id": user.id,
+            "X-User-Role": user.role || "student"
+          }
+        });
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const activeList = data.activeTests || [];
+
+        if (activeList.length > 0) {
+          const latestTest = activeList[0];
+          showLiveTestBanner(latestTest);
+        } else {
+          hideLiveTestBanner();
+        }
+      } catch (err) {
+        // Silent network retry
+      }
+    };
+
+    // Initial check + 5s polling
+    checkActiveTests();
+    activeTestPollInterval = setInterval(checkActiveTests, 5000);
+  }
+
+  function showLiveTestBanner(test) {
+    let banner = document.getElementById("global-live-test-banner");
+    const isNewSession = lastNotifiedSessionId !== test.id;
+
+    if (!banner) {
+      banner = document.createElement("div");
+      banner.id = "global-live-test-banner";
+      banner.className = "fixed top-3 left-1/2 -translate-x-1/2 z-50 w-[94%] max-w-2xl bg-gradient-to-r from-red-600 via-orange-600 to-amber-600 text-white p-3.5 sm:p-4 rounded-2xl shadow-2xl border-2 border-white/40 flex flex-col sm:flex-row items-center justify-between gap-3 animate-bounce-small transition-all";
+      document.body.appendChild(banner);
+    }
+
+    banner.innerHTML = `
+      <div class="flex items-center gap-3 w-full sm:w-auto">
+        <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white flex-shrink-0 animate-pulse">
+          <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
+        </div>
+        <div class="overflow-hidden">
+          <div class="flex items-center gap-2">
+            <span class="inline-block w-2 h-2 rounded-full bg-yellow-300 animate-ping"></span>
+            <span class="text-[11px] font-black uppercase tracking-wider text-yellow-200">Jonli Test Boshlandi!</span>
+            <span class="text-[10px] bg-black/25 px-2 py-0.5 rounded-full font-bold">PIN: ${test.code}</span>
+          </div>
+          <h4 class="text-sm font-extrabold text-white truncate leading-tight">${test.title || "Biologiya Jonli Testi"}</h4>
+          <p class="text-[11px] text-white/80 truncate">Guruh: ${test.groupName || "Barcha o'quvchilar"}</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <a href="/student/live-test.html?code=${test.code}" 
+           class="flex-1 sm:flex-none px-5 py-2.5 bg-white hover:bg-yellow-100 text-slate-950 font-black text-xs rounded-xl shadow-lg transition-transform hover:scale-105 active:scale-95 flex items-center justify-center gap-1.5 cursor-pointer">
+          <span>Testga Kirish</span>
+          <i data-lucide="arrow-right" class="w-4 h-4"></i>
+        </a>
+      </div>
+    `;
+
+    if (window.lucide) window.lucide.createIcons();
+
+    if (isNewSession) {
+      lastNotifiedSessionId = test.id;
+      // Play a gentle notification beep
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        if (AudioContext) {
+          const ctx = new AudioContext();
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
+          osc.frequency.setValueAtTime(880, ctx.currentTime + 0.15); // A5
+          gain.gain.setValueAtTime(0.15, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start();
+          osc.stop(ctx.currentTime + 0.4);
+        }
+      } catch (e) {}
+    }
+  }
+
+  function hideLiveTestBanner() {
+    const banner = document.getElementById("global-live-test-banner");
+    if (banner) {
+      banner.remove();
+    }
+    lastNotifiedSessionId = null;
+  }
+
+  // Start watcher on DOM load
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", initLiveTestWatcher);
+  } else {
+    initLiveTestWatcher();
+  }
+
 })();
