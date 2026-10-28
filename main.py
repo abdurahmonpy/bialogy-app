@@ -207,7 +207,7 @@ async def call_openrouter_api(
     model: str = OPENROUTER_MODEL,
     temperature: float = 0.3,
     max_tokens: int = 2500,
-    timeout: float = 55.0
+    timeout: float = 30.0
 ) -> str:
     if not OPENROUTER_API_KEY:
         raise ValueError("OPENROUTER_API_KEY sozlanmagan")
@@ -223,10 +223,9 @@ async def call_openrouter_api(
     # Candidate models in case the primary free model is busy or rate-limited
     candidate_models = [model]
     for fallback in [
-        "nvidia/nemotron-3-ultra-550b-a55b:free",
-        "google/gemini-2.0-flash-exp:free",
-        "meta-llama/llama-3.3-70b-instruct:free",
-        "mistralai/mistral-small-24b-instruct-2501:free"
+        "nvidia/nemotron-3.5-lightning:free",
+        "nvidia/nemotron-3-nano-omni-30b-a3b-reasoning:free",
+        "nvidia/nemotron-3.5-super-vl:free"
     ]:
         if fallback not in candidate_models:
             candidate_models.append(fallback)
