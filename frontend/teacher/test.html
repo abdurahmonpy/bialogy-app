@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-  <title>Test Markaz | O'qituvchi Portali</title>
+  <title>Test Markazi | O'qituvchi Portali</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     body { font-family: 'Plus Jakarta Sans', sans-serif; }
     .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -22,156 +22,170 @@
 
     <!-- Main Content Area -->
     <main class="flex-1 p-4 lg:p-8 overflow-y-auto">
-      
+
+      <!-- Active Live Session Alert Banner -->
+      <div id="active-session-banner" class="hidden mb-6 p-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 rounded-3xl text-white shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4 border border-white/20">
+        <div class="flex items-center gap-3">
+          <div class="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white flex-shrink-0 animate-pulse">
+            <i data-lucide="zap" class="w-6 h-6 fill-current"></i>
+          </div>
+          <div>
+            <div class="flex items-center gap-2 mb-0.5">
+              <span class="w-2 h-2 rounded-full bg-emerald-300 animate-ping"></span>
+              <span class="px-2 py-0.5 rounded bg-white/20 text-[10px] font-extrabold uppercase tracking-wider">Hozir Jonli Sinov Ketmoqda</span>
+              <span class="text-xs text-emerald-100 font-mono font-bold">PIN: <strong id="banner-code" class="text-white">------</strong></span>
+            </div>
+            <h3 class="text-base font-extrabold text-white truncate" id="banner-test-title">Mavzu nomi</h3>
+            <p class="text-xs text-emerald-100">Guruh: <span id="banner-group-name" class="font-bold text-white">...</span></p>
+          </div>
+        </div>
+        <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+          <a id="banner-monitor-btn" href="#" class="flex-1 sm:flex-none px-4 py-2.5 bg-white hover:bg-slate-100 text-slate-900 rounded-xl text-xs font-black shadow-md transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="activity" class="w-4 h-4 text-emerald-600"></i>
+            <span>Boshqaruv Paneli</span>
+          </a>
+          <button onclick="terminateActiveSessionDirectly()" title="Sessiyani to'liq yakunlash" class="px-3 py-2.5 bg-red-500/80 hover:bg-red-500 text-white rounded-xl text-xs font-bold transition flex items-center gap-1 cursor-pointer">
+            <i data-lucide="power" class="w-4 h-4"></i>
+            <span class="hidden md:inline">Yakunlash</span>
+          </button>
+        </div>
+      </div>
+
       <!-- Page Header -->
       <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-semibold mb-1">
-            <i data-lucide="zap" class="w-3.5 h-3.5 text-amber-500 fill-amber-500"></i>
-            Jonli & Bosqichli Sinovlar
+          <div class="inline-flex items-center gap-2 px-3 py-1 bg-indigo-50 text-indigo-700 rounded-full text-xs font-bold mb-1">
+            <i data-lucide="file-check" class="w-3.5 h-3.5"></i>
+            Test Boshqaruvi
           </div>
-          <h1 class="text-2xl font-extrabold text-slate-800 tracking-tight">Test Markaz</h1>
-          <p class="text-xs text-slate-500">Kahoot uslubidagi jonli testlar, savollar bazasi va AI test generatori</p>
+          <h1 class="text-2xl font-black text-slate-900 tracking-tight">Test Markazi</h1>
+          <p class="text-xs text-slate-500">Mavzular bo'yicha testlarni boshqaring, tahrirlang va jonli sinovlarni o'tkazing</p>
         </div>
 
-        <div class="flex items-center gap-2.5 flex-wrap">
-          <button id="btn-open-create-test" class="inline-flex items-center gap-2 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer">
-            <i data-lucide="plus-circle" class="w-4 h-4"></i>
-            Yangi Test Yaratish
-          </button>
-          <button id="open-ai-gen-btn" class="inline-flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white rounded-xl text-xs font-bold transition shadow-sm cursor-pointer">
-            <i data-lucide="sparkles" class="w-4 h-4"></i>
-            AI Bilan Tuzish
-          </button>
-        </div>
-      </div>
-
-      <!-- Active Live Session Alert Banner (if any live session running) -->
-      <div id="active-session-banner" class="hidden mb-6 p-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 text-white rounded-2xl shadow-md flex items-center justify-between gap-4">
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center font-bold text-lg">
-            <span class="w-3 h-3 rounded-full bg-emerald-300 animate-ping"></span>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="px-2 py-0.5 rounded bg-white/20 text-[10px] font-extrabold uppercase tracking-wider">Hozir Jonli</span>
-              <span class="text-xs font-bold" id="banner-test-title">Hujayra tuzilishi</span>
-            </div>
-            <p class="text-xs text-white/90">Guruh: <span id="banner-group-name">8-A</span> • Kod: <strong class="tracking-widest font-mono text-amber-300 text-sm ml-1" id="banner-code">842109</strong></p>
-          </div>
-        </div>
-        <a id="banner-monitor-btn" href="#" class="px-4 py-2 bg-white text-indigo-700 hover:bg-indigo-50 font-bold rounded-xl text-xs transition shadow-sm whitespace-nowrap flex items-center gap-1.5">
-          <span>Kuzatuvga o'tish</span>
-          <i data-lucide="arrow-right" class="w-4 h-4"></i>
-        </a>
-      </div>
-
-      <!-- Navigation Tabs & Search Filter -->
-      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 mb-6 border-b border-slate-200">
+        <!-- Top Actions -->
         <div class="flex items-center gap-2">
-          <button type="button" onclick="switchTestTab('bank')" id="tab-btn-bank" class="px-4 py-2 rounded-xl text-xs font-bold transition bg-indigo-600 text-white shadow-xs">
-            Savollar Bazasi & Testlar
-          </button>
-          <button type="button" onclick="switchTestTab('history')" id="tab-btn-history" class="px-4 py-2 rounded-xl text-xs font-bold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200">
-            Jonli Testlar Tarixi
-          </button>
+          <a href="/teacher/test-editor.html" class="px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/25 transition flex items-center gap-2 cursor-pointer">
+            <i data-lucide="plus" class="w-4 h-4"></i>
+            <span>Yangi Test Yaratish</span>
+          </a>
         </div>
+      </div>
 
-        <div id="filter-controls" class="flex items-center gap-2">
-          <div class="relative">
-            <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2.5 text-slate-400"></i>
-            <input type="text" id="search-tests-input" placeholder="Mavzuni qidiring..."
-              class="pl-9 pr-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500 w-44 sm:w-56">
+      <!-- Tabs Navigation -->
+      <div class="flex items-center gap-2 border-b border-slate-200 mb-6 pb-2">
+        <button id="tab-btn-bank" onclick="switchMainTab('bank')" class="px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-sm transition">
+          Testlar Banki (Mavzular)
+        </button>
+        <button id="tab-btn-history" onclick="switchMainTab('history')" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition">
+          Jonli Sinovlar Tarixi
+        </button>
+      </div>
+
+      <!-- SECTION 1: TESTS BANK (Cards List) -->
+      <section id="section-bank" class="space-y-6">
+        
+        <!-- Search & Filter Bar -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="relative flex-1">
+            <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+            <input 
+              type="text" 
+              id="search-tests-input" 
+              placeholder="Test mavzusi yoki sinf bo'yicha qidirish..." 
+              class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              oninput="filterTests()">
           </div>
-          <select id="filter-grade" class="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-            <option value="">Barcha sinflar</option>
-            <option value="5-sinf">5-sinf</option>
-            <option value="6-sinf">6-sinf</option>
-            <option value="7-sinf">7-sinf</option>
-            <option value="8-sinf">8-sinf</option>
-            <option value="9-sinf">9-sinf</option>
-            <option value="10-sinf">10-sinf</option>
-            <option value="11-sinf">11-sinf</option>
-            <option value="Abituriyent">Abituriyent</option>
-          </select>
-        </div>
-      </div>
 
-      <!-- View 1: Test Bank Grid -->
-      <div id="view-test-bank">
-        <div id="test-bank-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          <div class="text-center py-12 text-slate-400 text-xs col-span-full">Testlar yuklanmoqda...</div>
+          <div class="flex items-center gap-2">
+            <select id="filter-grade-select" onchange="filterTests()" class="text-xs font-bold text-slate-700 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none">
+              <option value="all">Barcha sinflar</option>
+              <option value="6-sinf">6-sinf</option>
+              <option value="7-sinf">7-sinf</option>
+              <option value="8-sinf">8-sinf</option>
+              <option value="9-sinf">9-sinf</option>
+              <option value="10-11-sinf">10-11-sinf</option>
+            </select>
+          </div>
         </div>
-      </div>
 
-      <!-- View 2: Live Tests History Table -->
-      <div id="view-test-history" class="hidden">
-        <div class="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-xs">
+        <!-- Tests Cards Grid -->
+        <div id="tests-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div class="col-span-full py-12 text-center text-slate-400 text-xs">
+            <div class="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
+            <span>Testlar yuklanmoqda...</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- SECTION 2: LIVE SESSIONS HISTORY -->
+      <section id="section-history" class="hidden space-y-4">
+        <div class="bg-white rounded-3xl border border-slate-200/80 shadow-xs overflow-hidden">
           <div class="p-4 border-b border-slate-100 flex items-center justify-between">
-            <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wide">O'tkazilgan Jonli Testlar Jurnali</h3>
-            <span class="text-[11px] text-slate-400" id="history-count">0 ta sessiya</span>
+            <h3 class="text-sm font-extrabold text-slate-800">O'tkazilgan Jonli Testlar Ro'yxati</h3>
+            <button onclick="loadHistoryData()" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg transition" title="Yangilash">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
           </div>
           <div class="overflow-x-auto">
             <table class="w-full text-left text-xs">
-              <thead class="bg-slate-50 text-slate-500 font-bold border-b border-slate-100">
+              <thead class="bg-slate-50 text-slate-500 font-extrabold border-b border-slate-200/80 uppercase tracking-wider text-[10px]">
                 <tr>
-                  <th class="p-3.5">Sessiya Kodi</th>
-                  <th class="p-3.5">Mavzu</th>
-                  <th class="p-3.5">Guruh</th>
-                  <th class="p-3.5">O'quvchilar</th>
-                  <th class="p-3.5">Holat</th>
-                  <th class="p-3.5">Sana</th>
-                  <th class="p-3.5 text-right">Amallar</th>
+                  <th class="py-3 px-4">Test Nomi</th>
+                  <th class="py-3 px-4">Guruh</th>
+                  <th class="py-3 px-4">PIN-kod</th>
+                  <th class="py-3 px-4">Qatnashuvchilar</th>
+                  <th class="py-3 px-4">Holat</th>
+                  <th class="py-3 px-4 text-right">Amallar</th>
                 </tr>
               </thead>
               <tbody id="history-table-body" class="divide-y divide-slate-100 text-slate-700">
                 <tr>
-                  <td colspan="7" class="p-8 text-center text-slate-400">Tarixiy sessiyalar yuklanmoqda...</td>
+                  <td colspan="6" class="py-8 text-center text-slate-400">Tarix yuklanmoqda...</td>
                 </tr>
               </tbody>
             </table>
           </div>
         </div>
-      </div>
+      </section>
 
     </main>
   </div>
 
-  <!-- Launch Live Test Modal (Kahoot setup) -->
-  <div id="launch-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+  <!-- LAUNCH LIVE TEST MODAL -->
+  <div id="launch-modal" class="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs hidden flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-white rounded-3xl p-6 shadow-2xl border border-slate-100">
       <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-        <div class="flex items-center gap-2.5">
-          <div class="w-9 h-9 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
-            <i data-lucide="zap" class="w-5 h-5 fill-white"></i>
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+            <i data-lucide="play" class="w-4 h-4 fill-current"></i>
           </div>
-          <div>
-            <h3 class="font-bold text-slate-800 text-sm">Jonli Testni Boshlash</h3>
-            <p class="text-[11px] text-slate-400" id="launch-test-topic">Mavzu nomi</p>
-          </div>
+          <h3 class="text-base font-extrabold text-slate-800">Jonli Testni Boshlash</h3>
         </div>
-        <button onclick="closeLaunchModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
+        <button onclick="closeLaunchModal()" class="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg">
           <i data-lucide="x" class="w-5 h-5"></i>
         </button>
       </div>
 
-      <form id="launch-test-form" class="space-y-4">
-        <input type="hidden" id="launch-test-id">
+      <div class="mb-4">
+        <span class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Tanlangan test:</span>
+        <h4 id="launch-test-title" class="text-sm font-extrabold text-slate-800 leading-snug mt-0.5">...</h4>
+      </div>
 
+      <form id="launch-form" class="space-y-4">
+        <!-- Target Group -->
         <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5">Guruhni tanlang <span class="text-rose-500">*</span></label>
-          <select id="launch-group-id" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+          <label class="block text-xs font-bold text-slate-700 mb-1">Qaysi guruh topshiradi?</label>
+          <select id="launch-group-select" class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-emerald-500">
             <option value="all">Barcha o'quvchilar (Ochiq sessiya)</option>
-            <!-- Populated via /api/groups -->
+            <!-- Injected dynamically -->
           </select>
-          <p class="text-[10px] text-slate-400 mt-1">Guruh tanlansa, faqat shu guruh o'quvchilari qatnasha oladi.</p>
         </div>
 
+        <!-- Total Time -->
         <div class="grid grid-cols-2 gap-3">
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1.5">Umumiy vaqt</label>
-            <select id="launch-total-time" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="5">5 daqiqa</option>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Umumiy vaqt</label>
+            <select id="launch-total-time" class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none">
               <option value="10">10 daqiqa</option>
               <option value="15" selected>15 daqiqa</option>
               <option value="20">20 daqiqa</option>
@@ -179,177 +193,36 @@
               <option value="45">45 daqiqa</option>
             </select>
           </div>
-
           <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1.5">Har savolga vaqt</label>
-            <select id="launch-per-q-time" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="0">Vaqt cheklovisiz</option>
+            <label class="block text-xs font-bold text-slate-700 mb-1">Savolga vaqt</label>
+            <select id="launch-per-q-time" class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none">
               <option value="20">20 soniya</option>
               <option value="30" selected>30 soniya</option>
-              <option value="45">45 soniya</option>
-              <option value="60">60 soniya</option>
+              <option value="60">1 daqiqa</option>
             </select>
           </div>
         </div>
 
-        <div class="p-3.5 bg-slate-50 border border-slate-200/80 rounded-2xl space-y-2.5 text-xs">
+        <!-- Kahoot Options -->
+        <div class="p-3 bg-slate-50 rounded-2xl border border-slate-100 space-y-2 text-xs">
           <label class="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
-            <input type="checkbox" id="launch-speed-scoring" checked class="w-4 h-4 text-indigo-600 rounded">
-            <span>⚡ Kahoot tezlik bonusi (Tez javobga ko'proq ball)</span>
+            <input type="checkbox" id="launch-speed-scoring" checked class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4">
+            <span>Tezkor javobga qarab ball berish (Kahoot)</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
-            <input type="checkbox" id="launch-shuffle-questions" checked class="w-4 h-4 text-indigo-600 rounded">
-            <span>🔀 Savollar ketma-ketligini aralashtirish</span>
+            <input type="checkbox" id="launch-shuffle" checked class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4">
+            <span>Savollar va variantlarni aralashtirish (Random)</span>
           </label>
           <label class="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
-            <input type="checkbox" id="launch-anti-cheating" checked class="w-4 h-4 text-indigo-600 rounded">
-            <span>🛡 Kiosk va Anti-cheating (Fullscreen + oyna almashuv nazorati)</span>
-          </label>
-          <label class="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
-            <input type="checkbox" id="launch-show-results" checked class="w-4 h-4 text-indigo-600 rounded">
-            <span>👁 Test yakunida o'quvchiga xatolarini ko'rsatish</span>
+            <input type="checkbox" id="launch-anti-cheat" checked class="rounded text-emerald-600 focus:ring-emerald-500 w-4 h-4">
+            <span>Antifor: Tab almashtirishni nazorat qilish</span>
           </label>
         </div>
 
-        <button type="submit" id="btn-create-session-submit" class="w-full py-3 bg-gradient-to-r from-amber-500 to-indigo-600 hover:opacity-95 text-white font-extrabold rounded-xl text-xs transition shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2 cursor-pointer">
-          <i data-lucide="play" class="w-4 h-4 fill-white"></i>
-          <span>Jonli Test Lobby-sini Ochish</span>
-        </button>
-      </form>
-    </div>
-  </div>
-
-  <!-- Create / Edit Comprehensive Test Modal -->
-  <div id="create-test-modal" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 hidden flex items-center justify-center p-3 sm:p-4">
-    <div class="bg-white rounded-3xl max-w-3xl w-full p-5 sm:p-6 shadow-2xl border border-slate-100 max-h-[90vh] flex flex-col overflow-hidden">
-      
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100 flex-shrink-0">
-        <div class="flex items-center gap-2">
-          <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-700 flex items-center justify-center font-bold">
-            <i data-lucide="file-plus-2" class="w-4 h-4"></i>
-          </div>
-          <h3 class="font-bold text-slate-800 text-sm sm:text-base">Yangi Test Yaratish (Savollar Konstruktori)</h3>
-        </div>
-        <button onclick="closeCreateTestModal()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <form id="full-test-builder-form" class="overflow-y-auto custom-scroll p-1 space-y-4 flex-1">
-        <input type="hidden" id="builder-test-id">
-
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div class="sm:col-span-2">
-            <label class="block text-xs font-bold text-slate-700 mb-1">Mavzu Nomi <span class="text-rose-500">*</span></label>
-            <input type="text" id="builder-topic" required placeholder="Masalan: Qon aylanish sistemasi va yurak tuzilishi"
-              class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Sinf</label>
-            <select id="builder-grade" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="5-sinf">5-sinf</option>
-              <option value="6-sinf">6-sinf</option>
-              <option value="7-sinf">7-sinf</option>
-              <option value="8-sinf" selected>8-sinf</option>
-              <option value="9-sinf">9-sinf</option>
-              <option value="10-sinf">10-sinf</option>
-              <option value="11-sinf">11-sinf</option>
-              <option value="Abituriyent">Abituriyent</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Toifa</label>
-            <select id="builder-category" class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
-              <option value="Mavzulashtirilgan">Mavzulashtirilgan</option>
-              <option value="Oraliq nazorat">Oraliq nazorat</option>
-              <option value="Yakuniy nazorat">Yakuniy nazorat</option>
-              <option value="Olimpiada / DTM">Olimpiada / DTM</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1">Teglar (vergul bilan)</label>
-            <input type="text" id="builder-tags" placeholder="anatomiya, yurak, qon"
-              class="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">
-          </div>
-        </div>
-
-        <!-- Questions List Builder Container -->
-        <div class="pt-2 border-t border-slate-100">
-          <div class="flex items-center justify-between mb-3">
-            <h4 class="text-xs font-bold text-slate-800 uppercase tracking-wide">Savollar Ro'yxati (<span id="builder-q-count">0</span> ta)</h4>
-            <button type="button" onclick="addNewQuestionToBuilder()" class="px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-xl text-xs font-bold flex items-center gap-1 transition cursor-pointer">
-              <i data-lucide="plus" class="w-3.5 h-3.5"></i>
-              <span>Savol Qo'shish</span>
-            </button>
-          </div>
-
-          <div id="builder-questions-list" class="space-y-4">
-            <!-- Dynamically generated question blocks -->
-          </div>
-        </div>
-
-        <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 flex-shrink-0">
-          <button type="button" onclick="closeCreateTestModal()" class="px-4 py-2.5 text-slate-500 hover:bg-slate-100 rounded-xl text-xs font-semibold transition cursor-pointer">
-            Bekor qilish
-          </button>
-          <button type="submit" id="btn-save-builder-test" class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1.5 cursor-pointer">
-            <i data-lucide="check" class="w-4 h-4"></i>
-            <span>Testni Saqlash</span>
-          </button>
-        </div>
-      </form>
-
-    </div>
-  </div>
-
-  <!-- AI Test Generator Modal -->
-  <div id="ai-gen-modal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-100">
-      <div class="flex items-center justify-between pb-3 border-b border-slate-100 mb-4">
-        <div class="flex items-center gap-2">
-          <div class="p-1.5 bg-purple-100 text-purple-700 rounded-lg">
-            <i data-lucide="sparkles" class="w-4 h-4"></i>
-          </div>
-          <h3 class="font-bold text-slate-800 text-base">AI 3-Bosqichli Test Generatori</h3>
-        </div>
-        <button id="close-ai-modal" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg cursor-pointer">
-          <i data-lucide="x" class="w-5 h-5"></i>
-        </button>
-      </div>
-
-      <form id="ai-gen-form" class="space-y-4">
-        <div>
-          <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Test Mavzusi</label>
-          <input type="text" id="ai-topic" required placeholder="Masalan: Qon aylanish sistemasi va yurak tuzilishi"
-            class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
-        </div>
-
-        <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Sinf</label>
-            <select id="ai-grade" class="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition">
-              <option value="6-sinf">6-sinf Botanika</option>
-              <option value="7-sinf">7-sinf Zoologiya</option>
-              <option value="8-sinf" selected>8-sinf Anatomiya</option>
-              <option value="9-sinf">9-sinf Sitologiya</option>
-              <option value="10-11-sinf">10-11 sinf DTM</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-xs font-bold text-slate-700 mb-1.5 uppercase tracking-wide">Format</label>
-            <input type="text" disabled value="3 bosqichli (Oson, O'rta, DTM)"
-              class="w-full px-4 py-2.5 bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-500 cursor-not-allowed">
-          </div>
-        </div>
-
-        <button type="submit" id="ai-gen-submit-btn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-95 text-white font-bold rounded-xl text-xs transition shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 cursor-pointer">
-          <span>AI Bilan Shakllantirish</span>
-          <i data-lucide="sparkles" class="w-4 h-4"></i>
+        <!-- Submit -->
+        <button type="submit" id="start-session-btn" class="w-full py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-600/30 transition flex items-center justify-center gap-2 cursor-pointer">
+          <i data-lucide="play" class="w-4 h-4 fill-current"></i>
+          <span>PIN-kod va QR-kod Yaratish</span>
         </button>
       </form>
     </div>
@@ -358,208 +231,256 @@
   <script src="/js/auth.js"></script>
   <script src="/js/teacher-nav.js"></script>
   <script>
-    const currentUser = Auth.requireAuth("teacher");
-    renderTeacherSidebar("Test Markaz");
-
     let allTests = [];
-    let allGroups = [];
-    let builderQuestions = [];
+    let teacherGroups = [];
+    let selectedTestForLaunch = null;
+    let activeRunningSession = null;
 
-    const testGrid = document.getElementById("test-bank-grid");
-    const aiModal = document.getElementById("ai-gen-modal");
-    const openAiBtn = document.getElementById("open-ai-gen-btn");
-    const closeAiBtn = document.getElementById("close-ai-modal");
-    const aiForm = document.getElementById("ai-gen-form");
-    const aiSubmitBtn = document.getElementById("ai-gen-submit-btn");
+    document.addEventListener("DOMContentLoaded", async () => {
+      lucide.createIcons();
+      if (window.renderTeacherSidebar) window.renderTeacherSidebar("Test Markaz");
 
-    const launchModal = document.getElementById("launch-modal");
-    const createTestModal = document.getElementById("create-test-modal");
-    const searchInput = document.getElementById("search-tests-input");
-    const filterGrade = document.getElementById("filter-grade");
+      await loadTeacherGroups();
+      await loadTestBank();
+      await checkActiveLiveSession();
 
-    openAiBtn.addEventListener("click", () => aiModal.classList.remove("hidden"));
-    closeAiBtn.addEventListener("click", () => aiModal.classList.add("hidden"));
-
-    document.getElementById("btn-open-create-test").addEventListener("click", () => {
-      openCreateTestModal();
+      // Poll active session every 6s
+      setInterval(checkActiveLiveSession, 6000);
     });
 
-    // Tab switching
-    window.switchTestTab = function(tabName) {
+    function switchMainTab(tabKey) {
+      const bankSec = document.getElementById("section-bank");
+      const histSec = document.getElementById("section-history");
       const bankBtn = document.getElementById("tab-btn-bank");
       const histBtn = document.getElementById("tab-btn-history");
-      const bankView = document.getElementById("view-test-bank");
-      const histView = document.getElementById("view-test-history");
-      const filterCtrls = document.getElementById("filter-controls");
 
-      if (tabName === "bank") {
-        bankBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition bg-indigo-600 text-white shadow-xs";
-        histBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200";
-        bankView.classList.remove("hidden");
-        histView.classList.add("hidden");
-        filterCtrls.classList.remove("hidden");
+      if (tabKey === "bank") {
+        bankSec.classList.remove("hidden");
+        histSec.classList.add("hidden");
+        bankBtn.className = "px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-sm transition";
+        histBtn.className = "px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition";
       } else {
-        histBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition bg-indigo-600 text-white shadow-xs";
-        bankBtn.className = "px-4 py-2 rounded-xl text-xs font-bold transition bg-white text-slate-600 hover:bg-slate-100 border border-slate-200";
-        histView.classList.remove("hidden");
-        bankView.classList.add("hidden");
-        filterCtrls.classList.add("hidden");
-        loadLiveHistory();
-      }
-    };
-
-    // Load Groups for launch modal
-    async function loadTeacherGroups() {
-      try {
-        const res = await fetch("/api/groups");
-        if (res.ok) {
-          allGroups = await res.json();
-          const selectEl = document.getElementById("launch-group-id");
-          selectEl.innerHTML = `<option value="all">Barcha o'quvchilar (Ochiq sessiya)</option>` +
-            allGroups.map(g => `<option value="${g.id}">${escapeHtml(g.name)} (${g.grade || 'Sinf'})</option>`).join("");
-        }
-      } catch (err) {
-        console.error("Groups load error:", err);
+        bankSec.classList.add("hidden");
+        histSec.classList.remove("hidden");
+        histBtn.className = "px-4 py-2 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-sm transition";
+        bankBtn.className = "px-4 py-2 rounded-xl text-xs font-bold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition";
+        loadHistoryData();
       }
     }
-    loadTeacherGroups();
 
-    // Check if there is an active session currently running
-    async function checkActiveLiveSession() {
-      try {
-        const res = await fetch("/api/live-test/history");
-        if (res.ok) {
-          const data = await res.json();
-          const running = (data.history || []).find(s => s.status === "active" || s.status === "lobby" || s.status === "paused");
-          const banner = document.getElementById("active-session-banner");
-          if (running) {
-            document.getElementById("banner-test-title").textContent = running.testTitle || "Jonli Test";
-            document.getElementById("banner-group-name").textContent = running.groupName || "Barchasi";
-            document.getElementById("banner-code").textContent = running.code;
-            document.getElementById("banner-monitor-btn").href = `/teacher/live-test.html?sessionId=${running.id}`;
-            banner.classList.remove("hidden");
-          } else {
-            banner.classList.add("hidden");
-          }
-        }
-      } catch (e) {}
-    }
-    checkActiveLiveSession();
-
-    // Load Tests from Database
+    // Load Tests Bank
     async function loadTestBank() {
       try {
         const res = await fetch("/api/teacher-tests");
         allTests = await res.json();
-        renderTestsList();
+        renderTestsList(allTests);
       } catch (e) {
-        testGrid.innerHTML = `<div class="text-center py-12 text-rose-500 text-xs col-span-full">Testlar yuklashda xatolik: ${e.message}</div>`;
+        console.error("Test yuklashda xatolik:", e);
       }
     }
 
-    function renderTestsList() {
-      const q = searchInput.value.toLowerCase().trim();
-      const grade = filterGrade.value;
-
-      const filtered = allTests.filter(t => {
-        const matchQ = !q || (t.topic || "").toLowerCase().includes(q) || (t.description || "").toLowerCase().includes(q);
-        const matchG = !grade || (t.classGrade || "").includes(grade);
-        return matchQ && matchG;
-      });
-
-      if (filtered.length === 0) {
-        testGrid.innerHTML = `
-          <div class="text-center py-16 text-slate-400 text-xs col-span-full space-y-2">
-            <i data-lucide="file-question" class="w-8 h-8 mx-auto text-slate-300"></i>
-            <div>Mos keluvchi test topilmadi</div>
-            <button onclick="openCreateTestModal()" class="px-3.5 py-1.5 bg-indigo-50 text-indigo-700 font-bold rounded-xl text-xs">Yangi test yaratish</button>
+    function renderTestsList(list = allTests) {
+      const grid = document.getElementById("tests-grid");
+      if (!list || list.length === 0) {
+        grid.innerHTML = `
+          <div class="col-span-full py-12 text-center text-slate-400 bg-white rounded-3xl border border-slate-200/80 p-8">
+            <i data-lucide="folder-plus" class="w-10 h-10 mx-auto mb-2 text-slate-300"></i>
+            <h4 class="text-sm font-bold text-slate-700">Hozircha testlar mavjud emas</h4>
+            <p class="text-xs text-slate-400 mt-1 mb-4">Birinchi testingizni yarating va o'quvchilar bilan jonli o'tkazing</p>
+            <a href="/teacher/test-editor.html" class="inline-flex items-center gap-1.5 px-4 py-2 bg-indigo-600 text-white font-bold rounded-xl text-xs shadow">
+              <i data-lucide="plus" class="w-4 h-4"></i>
+              <span>Yangi Test Yaratish</span>
+            </a>
           </div>
         `;
-        if (window.lucide) lucide.createIcons();
+        lucide.createIcons();
         return;
       }
 
-      testGrid.innerHTML = filtered.map(t => {
-        const totalQ = t.totalQuestions || (t.questions ? t.questions.length : (t.levels ? t.levels.reduce((acc, l) => acc + (l.questions?.length || 0), 0) : 0));
+      grid.innerHTML = list.map(t => {
+        // Count questions
+        let qCount = 0;
+        if (t.questions && t.questions.length > 0) {
+          qCount = t.questions.length;
+        } else if (t.levels) {
+          t.levels.forEach(l => { qCount += (l.questions || []).length; });
+        }
+        if (qCount === 0) qCount = 10;
+
         return `
-          <div class="bg-white p-5 rounded-3xl border border-slate-200/80 shadow-xs hover:shadow-md transition flex flex-col justify-between group">
+          <div class="bg-white rounded-3xl border border-slate-200/80 p-5 shadow-xs hover:shadow-md transition flex flex-col justify-between">
             <div>
-              <div class="flex items-center justify-between gap-2 mb-3">
-                <div class="flex items-center gap-1.5 flex-wrap">
-                  <span class="px-2.5 py-0.5 bg-indigo-50 text-indigo-700 text-[10px] font-bold rounded-full border border-indigo-100">
-                    ${escapeHtml(t.classGrade || 'Biologiya')}
-                  </span>
-                  <span class="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-semibold rounded-full">
-                    ${escapeHtml(t.category || 'Mavzulashtirilgan')}
-                  </span>
-                </div>
-                <span class="text-[11px] font-bold text-indigo-700 bg-indigo-50/70 px-2 py-0.5 rounded-lg">
-                  ${totalQ} ta savol
+              <div class="flex items-center justify-between mb-3">
+                <span class="px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-extrabold border border-indigo-100">
+                  ${escapeHtml(t.classGrade || "8-sinf")} &bull; Biologiya
+                </span>
+                <span class="text-xs font-bold text-slate-400 flex items-center gap-1">
+                  <i data-lucide="help-circle" class="w-3.5 h-3.5"></i>
+                  ${qCount} ta savol
                 </span>
               </div>
-
-              <h3 class="text-sm font-bold text-slate-800 mb-1.5 leading-snug group-hover:text-indigo-600 transition">
-                ${escapeHtml(t.topic)}
+              <h3 class="text-sm font-extrabold text-slate-800 leading-snug mb-3">
+                ${escapeHtml(t.topic || "Biologiya Testi")}
               </h3>
-              <p class="text-[11px] text-slate-500 mb-4 line-clamp-2 leading-relaxed">
-                ${escapeHtml(t.description || "Jonli sinov va bilim nazorati")}
-              </p>
             </div>
 
-            <div class="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
-              <button type="button" onclick="openLaunchModal('${t.id}')"
-                class="flex-1 py-2 bg-gradient-to-r from-amber-500 to-indigo-600 hover:opacity-95 text-white font-bold rounded-xl text-xs transition shadow-xs flex items-center justify-center gap-1.5 cursor-pointer">
-                <i data-lucide="zap" class="w-3.5 h-3.5 fill-white"></i>
-                <span>Jonli Test (Kahoot)</span>
-              </button>
+            <!-- Two Primary Action Buttons: Test Boshlash & Testni Tahrirlash -->
+            <div class="pt-4 border-t border-slate-100 space-y-2 mt-auto">
+              <div class="grid grid-cols-2 gap-2">
+                <button type="button" onclick="openLaunchModal('${t.id}')" 
+                  class="py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow-xs transition flex items-center justify-center gap-1.5 cursor-pointer">
+                  <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+                  <span>Test Boshlash</span>
+                </button>
+                <a href="/teacher/test-editor.html?id=${t.id}" 
+                  class="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer">
+                  <i data-lucide="edit-3" class="w-3.5 h-3.5 text-indigo-600"></i>
+                  <span>Tahrirlash</span>
+                </a>
+              </div>
 
-              <button type="button" onclick="duplicateTest('${t.id}')" title="Nusxasini yaratish"
-                class="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition cursor-pointer">
-                <i data-lucide="copy" class="w-4 h-4"></i>
-              </button>
-
-              <button type="button" onclick="deleteTest('${t.id}')" title="O'chirish"
-                class="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-xl transition cursor-pointer">
-                <i data-lucide="trash-2" class="w-4 h-4"></i>
-              </button>
+              <!-- Secondary tools -->
+              <div class="flex items-center justify-end gap-3 text-[11px] text-slate-400 pt-1">
+                <button type="button" onclick="duplicateTest('${t.id}')" class="hover:text-indigo-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="copy" class="w-3 h-3"></i>
+                  <span>Nusxa olish</span>
+                </button>
+                <span>&bull;</span>
+                <button type="button" onclick="deleteTest('${t.id}')" class="hover:text-red-600 transition flex items-center gap-1 cursor-pointer">
+                  <i data-lucide="trash-2" class="w-3 h-3"></i>
+                  <span>O'chirish</span>
+                </button>
+              </div>
             </div>
           </div>
         `;
       }).join("");
 
-      if (window.lucide) lucide.createIcons();
+      lucide.createIcons();
     }
 
-    searchInput.addEventListener("input", renderTestsList);
-    filterGrade.addEventListener("change", renderTestsList);
+    function filterTests() {
+      const search = (document.getElementById("search-tests-input").value || "").toLowerCase();
+      const grade = document.getElementById("filter-grade-select").value;
 
-    // Launch Modal logic
-    window.openLaunchModal = function(testId) {
-      const t = allTests.find(item => item.id === testId);
-      if (!t) return;
-      document.getElementById("launch-test-id").value = testId;
-      document.getElementById("launch-test-topic").textContent = `${t.topic} (${t.classGrade || 'Biologiya'})`;
-      launchModal.classList.remove("hidden");
-    };
+      const filtered = allTests.filter(t => {
+        const matchesSearch = (t.topic || "").toLowerCase().includes(search) || (t.subject || "").toLowerCase().includes(search);
+        const matchesGrade = grade === "all" || (t.classGrade || "").includes(grade);
+        return matchesSearch && matchesGrade;
+      });
 
-    window.closeLaunchModal = function() {
-      launchModal.classList.add("hidden");
-    };
+      renderTestsList(filtered);
+    }
 
-    document.getElementById("launch-test-form").addEventListener("submit", async (e) => {
+    // Check Active Session
+    async function checkActiveLiveSession() {
+      try {
+        const user = window.Auth ? window.Auth.getCurrentUser() : null;
+        const res = await fetch("/api/live-test/history", {
+          headers: { "X-User-Role": "teacher", "X-User-Id": user?.id || "teacher-1" }
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const now = Date.now();
+          const running = (data.history || []).find(s => {
+            if (s.status === "finished") return false;
+            if (s.status === "active" || s.status === "lobby" || s.status === "paused") {
+              if (s.endTime > 0 && now > s.endTime) return false;
+              return true;
+            }
+            return false;
+          });
+
+          const banner = document.getElementById("active-session-banner");
+          if (running) {
+            activeRunningSession = running;
+            document.getElementById("banner-test-title").textContent = running.testTitle || "Jonli Test";
+            document.getElementById("banner-group-name").textContent = running.groupName || "Barcha o'quvchilar";
+            document.getElementById("banner-code").textContent = running.code;
+            document.getElementById("banner-monitor-btn").href = `/teacher/live-test.html?sessionId=${running.id}`;
+            banner.classList.remove("hidden");
+          } else {
+            activeRunningSession = null;
+            banner.classList.add("hidden");
+          }
+        }
+      } catch (e) {}
+    }
+
+    async function terminateActiveSessionDirectly() {
+      if (!activeRunningSession) return;
+      if (!confirm("Ushbu jonli test sessiyasini butunlay yakunlamoqchimisiz?")) return;
+
+      try {
+        const user = window.Auth ? window.Auth.getCurrentUser() : null;
+        await fetch(`/api/live-test/session/${activeRunningSession.id}/terminate`, {
+          method: "POST",
+          headers: { "X-User-Role": "teacher", "X-User-Id": user?.id || "teacher-1" }
+        });
+        document.getElementById("active-session-banner").classList.add("hidden");
+        activeRunningSession = null;
+        alert("Sessiya muvaffaqiyatli yakunlandi!");
+        checkActiveLiveSession();
+      } catch (e) {
+        alert("Xatolik yuz berdi");
+      }
+    }
+
+    // Launch Modal Handlers
+    async function loadTeacherGroups() {
+      try {
+        const res = await fetch("/api/groups");
+        teacherGroups = await res.json();
+        const select = document.getElementById("launch-group-select");
+        if (select && Array.isArray(teacherGroups)) {
+          select.innerHTML = `<option value="all">Barcha o'quvchilar (Ochiq sessiya)</option>` +
+            teacherGroups.map(g => `<option value="${g.id}">${escapeHtml(g.name)} (${g.classGrade || ''})</option>`).join("");
+        }
+      } catch (e) {}
+    }
+
+    function openLaunchModal(testId) {
+      const test = allTests.find(t => t.id === testId);
+      if (!test) return;
+      selectedTestForLaunch = test;
+      document.getElementById("launch-test-title").textContent = test.topic || "Biologiya Testi";
+      document.getElementById("launch-modal").classList.remove("hidden");
+      lucide.createIcons();
+    }
+
+    function closeLaunchModal() {
+      document.getElementById("launch-modal").classList.add("hidden");
+      selectedTestForLaunch = null;
+    }
+
+    document.getElementById("launch-form").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const testId = document.getElementById("launch-test-id").value;
-      const groupId = document.getElementById("launch-group-id").value;
-      const totalTimeLimit = parseInt(document.getElementById("launch-total-time").value) || 15;
-      const perQuestionTime = parseInt(document.getElementById("launch-per-q-time").value) || 0;
-      const speedScoring = document.getElementById("launch-speed-scoring").checked;
-      const shuffleQuestions = document.getElementById("launch-shuffle-questions").checked;
-      const antiCheating = document.getElementById("launch-anti-cheating").checked;
-      const showResultsToStudents = document.getElementById("launch-show-results").checked;
+      if (!selectedTestForLaunch) return;
 
-      const submitBtn = document.getElementById("btn-create-session-submit");
-      submitBtn.disabled = true;
-      submitBtn.textContent = "Sessiya ochilmoqda...";
+      const btn = document.getElementById("start-session-btn");
+      btn.disabled = true;
+      btn.innerHTML = `<div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div><span>Tayyorlanmoqda...</span>`;
+
+      const user = window.Auth ? window.Auth.getCurrentUser() : null;
+      const grpSelect = document.getElementById("launch-group-select");
+      const selectedGrpId = grpSelect.value;
+      const selectedGrpName = grpSelect.options[grpSelect.selectedIndex].text;
+
+      const payload = {
+        testId: selectedTestForLaunch.id,
+        title: selectedTestForLaunch.topic,
+        groupId: selectedGrpId,
+        groupName: selectedGrpName,
+        settings: {
+          totalTimeLimit: parseInt(document.getElementById("launch-total-time").value) || 15,
+          perQuestionTime: parseInt(document.getElementById("launch-per-q-time").value) || 30,
+          speedScoring: document.getElementById("launch-speed-scoring").checked,
+          shuffleQuestions: document.getElementById("launch-shuffle").checked,
+          shuffleOptions: document.getElementById("launch-shuffle").checked,
+          antiCheatStrict: document.getElementById("launch-anti-cheat").checked,
+          showResultsToStudents: true
+        }
+      };
 
       try {
         const res = await fetch("/api/live-test/create-session", {
@@ -567,380 +488,97 @@
           headers: {
             "Content-Type": "application/json",
             "X-User-Role": "teacher",
-            "X-User-Id": currentUser.id
+            "X-User-Id": user?.id || "teacher-1"
           },
-          body: JSON.stringify({
-            testId,
-            groupId,
-            settings: {
-              totalTimeLimit,
-              perQuestionTime,
-              speedScoring,
-              shuffleQuestions,
-              shuffleOptions: true,
-              antiCheating,
-              showResultsToStudents
-            }
-          })
+          body: JSON.stringify(payload)
         });
 
         const data = await res.json();
-        if (res.ok && data.success) {
-          window.location.href = data.teacherUrl;
-        } else {
-          alert("Xatolik: " + (data.detail || "Sessiya ochib bo'lmadi"));
-        }
+        if (!res.ok) throw new Error(data.detail || "Sessiya ochilmadi");
+
+        // Forward to Teacher Live Control Room (Lobby)
+        window.location.href = `/teacher/live-test.html?sessionId=${data.session.id}`;
       } catch (err) {
-        alert("Tarmoq xatosi: " + err.message);
-      } finally {
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = `<i data-lucide="play" class="w-4 h-4 fill-white"></i> <span>Jonli Test Lobby-sini Ochish</span>`;
-        if (window.lucide) lucide.createIcons();
+        alert("Xatolik: " + err.message);
+        btn.disabled = false;
+        btn.innerHTML = `<span>PIN-kod va QR-kod Yaratish</span>`;
       }
     });
 
-    // Test Duplication
-    window.duplicateTest = async function(testId) {
-      if (!confirm("Ushbu testdan nusxa olinsinmi?")) return;
-      try {
-        const res = await fetch(`/api/teacher-tests/${testId}/duplicate`, { method: "POST" });
-        if (res.ok) {
-          loadTestBank();
-        }
-      } catch (e) {
-        alert("Xatolik: " + e.message);
-      }
-    };
-
-    // Test Deletion
-    window.deleteTest = async function(testId) {
-      if (!confirm("Haqiqatan ham ushbu testni o'chirmoqchimisiz?")) return;
-      try {
-        const res = await fetch(`/api/teacher-tests/${testId}`, { method: "DELETE" });
-        if (res.ok) {
-          loadTestBank();
-        }
-      } catch (e) {
-        alert("Xatolik: " + e.message);
-      }
-    };
-
-    // History Tab
-    async function loadLiveHistory() {
+    // History Table
+    async function loadHistoryData() {
       const tbody = document.getElementById("history-table-body");
+      const user = window.Auth ? window.Auth.getCurrentUser() : null;
+
       try {
         const res = await fetch("/api/live-test/history", {
-          headers: { "X-User-Role": "teacher", "X-User-Id": currentUser.id }
+          headers: { "X-User-Role": "teacher", "X-User-Id": user?.id || "teacher-1" }
         });
         const data = await res.json();
         const list = data.history || [];
-        document.getElementById("history-count").textContent = `${list.length} ta sessiya`;
 
         if (list.length === 0) {
-          tbody.innerHTML = `<tr><td colspan="7" class="p-8 text-center text-slate-400">Hozircha jonli test o'tkazilmagan</td></tr>`;
+          tbody.innerHTML = `<tr><td colspan="6" class="py-8 text-center text-slate-400">O'tkazilgan testlar tarixi mavjud emas</td></tr>`;
           return;
         }
 
         tbody.innerHTML = list.map(s => {
-          const dateStr = new Date(s.createdAt).toLocaleDateString("uz-UZ", { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
-          const statusBadge = s.status === 'active' ? '<span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 font-bold rounded-full">Faol</span>' :
-            s.status === 'lobby' ? '<span class="px-2 py-0.5 bg-amber-50 text-amber-700 font-bold rounded-full">Kutilmoqda</span>' :
-            '<span class="px-2 py-0.5 bg-slate-100 text-slate-600 font-semibold rounded-full">Tugallangan</span>';
+          const isFinished = s.status === "finished";
+          const statusBadge = isFinished 
+            ? `<span class="px-2 py-0.5 bg-slate-100 text-slate-600 rounded text-[10px] font-bold">Yakunlangan</span>`
+            : `<span class="px-2 py-0.5 bg-emerald-50 text-emerald-700 rounded text-[10px] font-bold">Faol</span>`;
 
           return `
             <tr class="hover:bg-slate-50/80 transition">
-              <td class="p-3.5 font-mono font-bold text-indigo-600">${s.code}</td>
-              <td class="p-3.5 font-semibold text-slate-800">${escapeHtml(s.testTitle)}</td>
-              <td class="p-3.5 text-slate-500">${escapeHtml(s.groupName || 'Barchasi')}</td>
-              <td class="p-3.5 font-bold">${s.participantCount || 0} nafar</td>
-              <td class="p-3.5">${statusBadge}</td>
-              <td class="p-3.5 text-slate-400 text-[11px]">${dateStr}</td>
-              <td class="p-3.5 text-right space-x-1">
-                <a href="/teacher/live-test.html?sessionId=${s.id}" class="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-bold transition">
-                  ${s.status === 'finished' ? 'Natijalar' : 'Boshqaruv'}
-                </a>
-                <a href="/api/live-test/session/${s.id}/export-csv" class="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-xs font-bold transition" title="Excel yuklash">
-                  Excel
+              <td class="py-3 px-4 font-bold text-slate-800">${escapeHtml(s.testTitle || "Biologiya Testi")}</td>
+              <td class="py-3 px-4 text-slate-500">${escapeHtml(s.groupName || "Umumiy")}</td>
+              <td class="py-3 px-4 font-mono font-bold text-indigo-600">${s.code}</td>
+              <td class="py-3 px-4 font-semibold">${s.participantCount || 0} nafar</td>
+              <td class="py-3 px-4">${statusBadge}</td>
+              <td class="py-3 px-4 text-right">
+                <a href="/teacher/live-test.html?sessionId=${s.id}" class="px-3 py-1.5 bg-slate-100 hover:bg-indigo-50 text-slate-700 hover:text-indigo-600 rounded-lg text-xs font-bold transition inline-flex items-center gap-1">
+                  <i data-lucide="bar-chart-2" class="w-3.5 h-3.5"></i>
+                  <span>Natijalar</span>
                 </a>
               </td>
             </tr>
           `;
         }).join("");
-      } catch (err) {
-        tbody.innerHTML = `<tr><td colspan="7" class="p-6 text-center text-rose-500">Xatolik: ${err.message}</td></tr>`;
+
+        lucide.createIcons();
+      } catch (e) {
+        tbody.innerHTML = `<tr><td colspan="6" class="py-4 text-center text-red-500">Tarixni yuklashda xatolik</td></tr>`;
       }
     }
 
-    // Comprehensive Test Builder Modal
-    window.openCreateTestModal = function(editId = null) {
-      builderQuestions = [
-        {
-          id: 1,
-          type: "single_choice",
-          question: "",
-          points: 1000,
-          options: ["", "", "", ""],
-          correctAnswer: 0,
-          explanation: ""
-        }
-      ];
-      document.getElementById("builder-topic").value = "";
-      renderBuilderQuestions();
-      createTestModal.classList.remove("hidden");
-    };
-
-    window.closeCreateTestModal = function() {
-      createTestModal.classList.add("hidden");
-    };
-
-    window.addNewQuestionToBuilder = function() {
-      const nextId = builderQuestions.length + 1;
-      builderQuestions.push({
-        id: nextId,
-        type: "single_choice",
-        question: "",
-        points: 1000,
-        options: ["", "", "", ""],
-        correctAnswer: 0,
-        explanation: ""
-      });
-      renderBuilderQuestions();
-    };
-
-    window.removeQuestionFromBuilder = function(idx) {
-      if (builderQuestions.length <= 1) {
-        alert("Kamida 1 ta savol bo'lishi shart!");
-        return;
-      }
-      builderQuestions.splice(idx, 1);
-      renderBuilderQuestions();
-    };
-
-    function renderBuilderQuestions() {
-      document.getElementById("builder-q-count").textContent = builderQuestions.length;
-      const listEl = document.getElementById("builder-questions-list");
-
-      listEl.innerHTML = builderQuestions.map((q, idx) => {
-        return `
-          <div class="p-4 bg-slate-50 border border-slate-200/90 rounded-2xl space-y-3 relative">
-            <div class="flex items-center justify-between pb-2 border-b border-slate-200">
-              <span class="text-xs font-extrabold text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-md">
-                ${idx + 1}-Savol
-              </span>
-
-              <div class="flex items-center gap-2">
-                <select onchange="updateQuestionType(${idx}, this.value)" class="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none">
-                  <option value="single_choice" ${q.type === 'single_choice' ? 'selected' : ''}>Yagona to'g'ri variant</option>
-                  <option value="multiple_choice" ${q.type === 'multiple_choice' ? 'selected' : ''}>Ko'p to'g'ri variant</option>
-                  <option value="true_false" ${q.type === 'true_false' ? 'selected' : ''}>Rost / Yolg'on</option>
-                  <option value="short_answer" ${q.type === 'short_answer' ? 'selected' : ''}>Qisqa yozma javob</option>
-                </select>
-
-                <button type="button" onclick="removeQuestionFromBuilder(${idx})" class="p-1 text-slate-400 hover:text-rose-600 transition" title="Savolni o'chirish">
-                  <i data-lucide="trash" class="w-4 h-4"></i>
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label class="block text-[11px] font-bold text-slate-600 mb-1">Savol Matni</label>
-              <textarea rows="2" required placeholder="Savol matnini kiriting..."
-                oninput="builderQuestions[${idx}].question = this.value"
-                class="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500">${escapeHtml(q.question || '')}</textarea>
-            </div>
-
-            <!-- Options rendering based on type -->
-            <div class="space-y-2">
-              <div class="text-[11px] font-bold text-slate-600">Javob Variantlari & To'g'ri Javobni Belgilash:</div>
-              ${renderOptionFields(q, idx)}
-            </div>
-
-            <div class="grid grid-cols-2 gap-3 pt-1">
-              <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Ball miqdori</label>
-                <input type="number" value="${q.points || 1000}" step="100" min="100"
-                  oninput="builderQuestions[${idx}].points = parseInt(this.value) || 1000"
-                  class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold">
-              </div>
-              <div>
-                <label class="block text-[10px] font-bold text-slate-500 mb-0.5">Izoh (ixtiyoriy)</label>
-                <input type="text" placeholder="To'g'ri javob izohi..." value="${escapeHtml(q.explanation || '')}"
-                  oninput="builderQuestions[${idx}].explanation = this.value"
-                  class="w-full px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs">
-              </div>
-            </div>
-          </div>
-        `;
-      }).join("");
-
-      if (window.lucide) lucide.createIcons();
-    }
-
-    window.updateQuestionType = function(idx, newType) {
-      builderQuestions[idx].type = newType;
-      if (newType === "true_false") {
-        builderQuestions[idx].options = ["Rost (To'g'ri)", "Yolg'on (Noto'g'ri)"];
-        builderQuestions[idx].correctAnswer = 0;
-      } else if (newType === "short_answer") {
-        builderQuestions[idx].options = [];
-        builderQuestions[idx].correctAnswer = "";
-      } else if (newType === "multiple_choice") {
-        builderQuestions[idx].options = ["A variant", "B variant", "C variant", "D variant"];
-        builderQuestions[idx].correctAnswer = [0];
-      } else {
-        builderQuestions[idx].options = ["A variant", "B variant", "C variant", "D variant"];
-        builderQuestions[idx].correctAnswer = 0;
-      }
-      renderBuilderQuestions();
-    };
-
-    function renderOptionFields(q, qIdx) {
-      if (q.type === "true_false") {
-        return `
-          <div class="flex items-center gap-4">
-            <label class="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 cursor-pointer text-xs font-bold text-emerald-700">
-              <input type="radio" name="tf-${qIdx}" ${q.correctAnswer === 0 ? 'checked' : ''} onchange="builderQuestions[${qIdx}].correctAnswer = 0">
-              <span>Rost (To'g'ri)</span>
-            </label>
-            <label class="flex items-center gap-2 p-2 bg-white rounded-xl border border-slate-200 cursor-pointer text-xs font-bold text-rose-700">
-              <input type="radio" name="tf-${qIdx}" ${q.correctAnswer === 1 ? 'checked' : ''} onchange="builderQuestions[${qIdx}].correctAnswer = 1">
-              <span>Yolg'on (Noto'g'ri)</span>
-            </label>
-          </div>
-        `;
-      } else if (q.type === "short_answer") {
-        return `
-          <div>
-            <input type="text" placeholder="To'g'ri javob so'zi yoki raqami (masalan: mitoxondriya)"
-              value="${escapeHtml(q.correctAnswer || '')}"
-              oninput="builderQuestions[${qIdx}].correctAnswer = this.value"
-              class="w-full px-3 py-2 bg-emerald-50 border border-emerald-300 rounded-xl text-xs font-bold text-emerald-900 focus:outline-none">
-          </div>
-        `;
-      } else {
-        // Single or Multiple Choice
-        const isMulti = q.type === "multiple_choice";
-        const letters = ["A", "B", "C", "D", "E", "F"];
-        return `
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-            ${(q.options || []).map((opt, optIdx) => {
-              const isChecked = isMulti ?
-                (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(optIdx)) :
-                (q.correctAnswer === optIdx);
-              return `
-                <div class="flex items-center gap-2 p-1.5 bg-white border border-slate-200 rounded-xl">
-                  <input type="${isMulti ? 'checkbox' : 'radio'}" name="opt-ans-${qIdx}" ${isChecked ? 'checked' : ''}
-                    onchange="handleOptionCheck(${qIdx}, ${optIdx}, this.checked, ${isMulti})"
-                    class="ml-1 text-emerald-600 rounded">
-                  <span class="text-xs font-bold text-slate-400 w-4">${letters[optIdx] || optIdx + 1}</span>
-                  <input type="text" value="${escapeHtml(opt)}" required placeholder="Variant matni..."
-                    oninput="builderQuestions[${qIdx}].options[${optIdx}] = this.value"
-                    class="flex-1 bg-transparent text-xs focus:outline-none text-slate-800">
-                </div>
-              `;
-            }).join("")}
-          </div>
-        `;
-      }
-    }
-
-    window.handleOptionCheck = function(qIdx, optIdx, isChecked, isMulti) {
-      if (isMulti) {
-        if (!Array.isArray(builderQuestions[qIdx].correctAnswer)) {
-          builderQuestions[qIdx].correctAnswer = [];
-        }
-        if (isChecked) {
-          if (!builderQuestions[qIdx].correctAnswer.includes(optIdx)) {
-            builderQuestions[qIdx].correctAnswer.push(optIdx);
-          }
-        } else {
-          builderQuestions[qIdx].correctAnswer = builderQuestions[qIdx].correctAnswer.filter(i => i !== optIdx);
-        }
-      } else {
-        builderQuestions[qIdx].correctAnswer = optIdx;
-      }
-    };
-
-    // Save Builder Test
-    document.getElementById("full-test-builder-form").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const topic = document.getElementById("builder-topic").value.trim();
-      const classGrade = document.getElementById("builder-grade").value;
-      const category = document.getElementById("builder-category").value;
-      const tagsRaw = document.getElementById("builder-tags").value;
-      const tags = tagsRaw.split(",").map(t => t.trim()).filter(Boolean);
-
-      const saveBtn = document.getElementById("btn-save-builder-test");
-      saveBtn.disabled = true;
-      saveBtn.textContent = "Saqlanmoqda...";
-
+    async function duplicateTest(id) {
+      if (!confirm("Ushbu testdan nusxa ko'chirilsinmi?")) return;
       try {
-        const res = await fetch("/api/teacher-tests", {
+        const user = window.Auth ? window.Auth.getCurrentUser() : null;
+        const res = await fetch(`/api/teacher-tests/${id}/duplicate`, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            topic,
-            classGrade,
-            category,
-            tags,
-            subject: "Biologiya",
-            teacherName: currentUser.fullName,
-            questions: builderQuestions
-          })
+          headers: { "X-User-Role": "teacher", "X-User-Id": user?.id || "teacher-1" }
         });
-
         if (res.ok) {
-          closeCreateTestModal();
+          alert("Nusxa muvaffaqiyatli yaratildi!");
           loadTestBank();
-        } else {
-          const err = await res.json();
-          alert("Xatolik: " + (err.detail || "Testni saqlab bo'lmadi"));
         }
-      } catch (err) {
-        alert("Xatolik: " + err.message);
-      } finally {
-        saveBtn.disabled = false;
-        saveBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i> <span>Testni Saqlash</span>`;
-        if (window.lucide) lucide.createIcons();
+      } catch (e) {
+        alert("Nusxa olishda xatolik");
       }
-    });
+    }
 
-    // AI Test Generator Submission
-    aiForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const topic = document.getElementById("ai-topic").value.trim();
-      const grade = document.getElementById("ai-grade").value;
-
-      aiSubmitBtn.disabled = true;
-      aiSubmitBtn.textContent = "AI test tuzmoqda...";
-
+    async function deleteTest(id) {
+      if (!confirm("Haqiqatan ham ushbu testni o'chirib tashlamoqchimisiz?")) return;
       try {
-        const res = await fetch("/api/teacher/ai-assistant", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-User-Role": "teacher",
-            "X-User-Id": currentUser.id
-          },
-          body: JSON.stringify({
-            type: "chat",
-            message: `${grade} ${topic} mavzusi bo'yicha test tuz va Test Markaziga qo'sh`
-          })
-        });
-
-        const data = await res.json();
-        aiModal.classList.add("hidden");
-        aiForm.reset();
-        loadTestBank();
-        alert("🎉 AI tomonidan 3 bosqichli test tuzildi va muvaffaqiyatli saqlandi!");
-      } catch (err) {
-        alert("Xatolik: " + err.message);
-      } finally {
-        aiSubmitBtn.disabled = false;
-        aiSubmitBtn.innerHTML = `<span>AI Bilan Shakllantirish</span> <i data-lucide="sparkles" class="w-4 h-4"></i>`;
-        if (window.lucide) lucide.createIcons();
+        const res = await fetch(`/api/teacher-tests/${id}`, { method: "DELETE" });
+        if (res.ok) {
+          loadTestBank();
+        }
+      } catch (e) {
+        alert("O'chirishda xatolik");
       }
-    });
+    }
 
     function escapeHtml(str) {
       return String(str || "")
@@ -950,8 +588,6 @@
         .replace(/"/g, "&quot;")
         .replace(/'/g, "&#039;");
     }
-
-    loadTestBank();
   </script>
 </body>
 </html>

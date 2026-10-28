@@ -925,16 +925,19 @@
         const res = await fetch(`/api/live-test/session/${sessionData.id}/results`);
         const data = await res.json();
         if (res.ok) {
-          const myResult = data.participants.find(p => p.id === participantData.id);
+          const myResult = (data.participants || []).find(p => p.id === participantData.id);
+          const totalQ = data.totalQuestions || (data.questions || []).length || questionsList.length || 1;
+
           if (myResult) {
-            document.getElementById("result-score").textContent = myResult.score;
-            document.getElementById("result-correct").textContent = `${myResult.correctCount} / ${data.totalQuestions}`;
-            const acc = data.totalQuestions > 0 ? Math.round((myResult.correctCount / data.totalQuestions) * 100) : 0;
+            document.getElementById("result-score").textContent = myResult.score || 0;
+            document.getElementById("result-correct").textContent = `${myResult.correctCount || 0} / ${totalQ}`;
+            const acc = totalQ > 0 ? Math.round(((myResult.correctCount || 0) / totalQ) * 100) : 0;
             document.getElementById("result-accuracy").textContent = `${acc}%`;
 
             // If teacher allowed showing results & answers
-            if (data.session.settings && data.session.settings.showResultsToStudents) {
-              renderDetailedReview(data.session.questions, myResult.answers);
+            const questionsForReview = (data.questions && data.questions.length > 0) ? data.questions : (data.session?.questions || questionsList);
+            if (data.session?.settings?.showResultsToStudents) {
+              renderDetailedReview(questionsForReview, myResult.answers);
             }
           }
         }
@@ -951,20 +954,30 @@
 
       (allQuestions || []).forEach((q, idx) => {
         const ansObj = (myAnswers && myAnswers[String(q.id)]) || {};
-        const isCorr = ansObj.isCorrect;
+        const isCorr = Boolean(ansObj.isCorrect);
+
+        let correctStr = q.correctAnswer;
+        if (!correctStr && "answerIndex" in q && Array.isArray(q.options)) {
+          correctStr = q.options[q.answerIndex];
+        }
+        if (!correctStr) correctStr = "Belgilanmagan";
+
+        const qTitle = q.text || q.question || `${idx + 1}-savol`;
 
         const row = document.createElement("div");
-        row.className = `p-3 rounded-xl border text-xs ${isCorr ? 'bg-emerald-950/30 border-emerald-500/40' : 'bg-red-950/30 border-red-500/40'}`;
+        row.className = `p-3.5 rounded-2xl border text-xs ${isCorr ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-red-950/40 border-red-500/40'}`;
         row.innerHTML = `
-          <div class="flex items-center justify-between mb-1">
-            <span class="font-bold text-white">${idx + 1}-savol: ${escapeHtml(q.text)}</span>
-            <span class="font-bold ${isCorr ? 'text-emerald-400' : 'text-red-400'}">
-              ${isCorr ? 'To\'g\'ri' : 'Xato'}
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="font-extrabold text-white text-xs sm:text-sm">${idx + 1}-savol: ${escapeHtml(qTitle)}</span>
+            <span class="px-2 py-0.5 rounded text-[10px] font-black ${isCorr ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}">
+              ${isCorr ? '✓ To\'g\'ri' : '✕ Xato'}
             </span>
           </div>
-          <p class="text-slate-300">Sizning javobingiz: <strong class="text-white">${escapeHtml(String(ansObj.answer || 'Javob berilmadi'))}</strong></p>
-          <p class="text-emerald-300">To'g'ri javob: <strong>${escapeHtml(String(q.correctAnswer))}</strong></p>
-          ${q.explanation ? `<p class="text-slate-400 mt-1 italic">Izoh: ${escapeHtml(q.explanation)}</p>` : ''}
+          <div class="space-y-0.5">
+            <p class="text-slate-300">Sizning javobingiz: <strong class="${isCorr ? 'text-emerald-300' : 'text-red-300'}">${escapeHtml(String(ansObj.answer !== undefined && ansObj.answer !== null ? ansObj.answer : 'Javob berilmadi'))}</strong></p>
+            <p class="text-emerald-300">To'g'ri javob: <strong class="text-white">${escapeHtml(String(correctStr))}</strong></p>
+            ${q.explanation ? `<p class="text-slate-400 text-[11px] mt-1.5 pt-1 border-t border-white/10 italic">Izoh: ${escapeHtml(q.explanation)}</p>` : ''}
+          </div>
         `;
         reviewList.appendChild(row);
       });

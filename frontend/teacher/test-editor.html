@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Muharriri (Kahoot-uslubida) | BioEdu Ustoz</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .custom-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+    .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    .slide-active { border-color: #4f46e5 !important; background-color: #eef2ff !important; }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen flex flex-col overflow-hidden">
+
+  <!-- Top Navigation Header -->
+  <header class="h-16 bg-white border-b border-slate-200 px-4 sm:px-6 flex items-center justify-between z-30 flex-shrink-0 shadow-xs">
+    <div class="flex items-center gap-3">
+      <a href="/teacher/test.html" class="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition cursor-pointer" title="Testlar markaziga qaytish">
+        <i data-lucide="arrow-left" class="w-5 h-5"></i>
+      </a>
+      <div>
+        <input 
+          type="text" 
+          id="test-topic-input" 
+          placeholder="Test mavzusini kiriting..." 
+          class="text-base sm:text-lg font-black text-slate-900 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-indigo-600 focus:outline-none px-1 py-0.5 transition w-60 sm:w-96 truncate"
+          value="Biologiya mavzusi bo'yicha yangi test">
+        <div class="flex items-center gap-2 text-[11px] text-slate-400 font-semibold px-1">
+          <span id="save-status-indicator">Qoralamada</span>
+          <span>&bull;</span>
+          <span id="question-count-indicator">1 ta savol</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header Actions -->
+    <div class="flex items-center gap-2 sm:gap-3">
+      <select id="test-grade-select" class="text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+        <option value="6-sinf">6-sinf Botanika</option>
+        <option value="7-sinf">7-sinf Zoologiya</option>
+        <option value="8-sinf" selected>8-sinf Odam anatomiyasi</option>
+        <option value="9-sinf">9-sinf Sitologiya</option>
+        <option value="10-11-sinf">10-11-sinf DTM tayyorlov</option>
+      </select>
+
+      <button onclick="saveTest()" id="save-test-btn" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-black shadow-md shadow-indigo-600/30 transition flex items-center gap-1.5 cursor-pointer">
+        <i data-lucide="save" class="w-4 h-4"></i>
+        <span>Saqlash</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Workspace Body -->
+  <div class="flex-1 flex overflow-hidden">
+    
+    <!-- LEFT PANEL: Question Slides Navigator -->
+    <aside class="w-56 sm:w-64 bg-white border-r border-slate-200 flex flex-col flex-shrink-0">
+      <div class="p-3 border-b border-slate-100 flex items-center justify-between text-xs font-bold text-slate-600 uppercase tracking-wider">
+        <span>Savollar Ro'yxati</span>
+        <span id="slide-badge-count" class="px-2 py-0.5 bg-indigo-50 text-indigo-700 rounded-full text-[10px]">1</span>
+      </div>
+
+      <!-- Slides list -->
+      <div id="slides-container" class="flex-1 p-3 overflow-y-auto space-y-2.5 custom-scroll">
+        <!-- Rendered via JS -->
+      </div>
+
+      <!-- Add slide button -->
+      <div class="p-3 border-t border-slate-100 bg-slate-50">
+        <button onclick="addNewQuestion()" class="w-full py-2.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border-2 border-dashed border-indigo-300 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i>
+          <span>Savol qo'shish</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- CENTER PANEL: Interactive Kahoot Question Canvas -->
+    <main class="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col justify-between custom-scroll">
+      <div class="max-w-3xl mx-auto w-full space-y-5">
+        
+        <!-- Big Question Input Card -->
+        <div class="bg-white border border-slate-200 rounded-3xl p-5 sm:p-7 shadow-sm">
+          <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-2">
+            Savol matni (1-savol)
+          </label>
+          <textarea 
+            id="question-text-input" 
+            rows="3" 
+            placeholder="Savolingizni bu yerga yozing..." 
+            class="w-full text-base sm:text-lg font-bold text-slate-900 border-none focus:outline-none resize-none placeholder-slate-300"
+            oninput="onQuestionContentChange()"></textarea>
+
+          <!-- Image Preview / Input -->
+          <div class="mt-3 pt-3 border-t border-slate-100 flex items-center justify-between">
+            <div class="flex items-center gap-2 flex-1 mr-3">
+              <i data-lucide="image" class="w-4 h-4 text-slate-400"></i>
+              <input 
+                type="url" 
+                id="question-img-url" 
+                placeholder="Rasm havolasi (ixtiyoriy, URL)..." 
+                class="w-full text-xs text-slate-600 border border-slate-200 rounded-xl px-3 py-1.5 focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                oninput="onQuestionContentChange()">
+            </div>
+            <div id="img-preview-box" class="hidden">
+              <img id="img-preview-tag" src="" class="w-10 h-10 object-cover rounded-lg border border-slate-200" alt="Preview">
+            </div>
+          </div>
+        </div>
+
+        <!-- Kahoot Answer Options (4 Vibrant Tiles) -->
+        <div id="answers-editor-container" class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+          <!-- Rendered via JS -->
+        </div>
+
+        <!-- Explanation Card -->
+        <div class="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
+          <label class="block text-xs font-bold text-slate-600 mb-1 flex items-center gap-1.5">
+            <i data-lucide="info" class="w-4 h-4 text-indigo-600"></i>
+            <span>Ilmiy Sharh / Tushuntirish (o'quvchi xato qilganda chiqadi)</span>
+          </label>
+          <input 
+            type="text" 
+            id="question-explanation-input" 
+            placeholder="Nima uchun bu javob to'g'ri ekanligini tushuntiring..." 
+            class="w-full text-xs text-slate-700 border border-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+            oninput="onQuestionContentChange()">
+        </div>
+
+      </div>
+    </main>
+
+    <!-- RIGHT PANEL: Question Settings -->
+    <aside class="w-60 sm:w-72 bg-white border-l border-slate-200 p-4 flex flex-col justify-between flex-shrink-0">
+      <div class="space-y-5">
+        <div class="text-xs font-bold text-slate-600 uppercase tracking-wider pb-2 border-b border-slate-100">
+          Savol Sozlamalari
+        </div>
+
+        <!-- Question Type -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Savol turi</label>
+          <select id="setting-type" onchange="onSettingChange()" class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="single_choice">Yakka tanlov (1 ta javob)</option>
+            <option value="true_false">Rost / Yolg'on (True / False)</option>
+            <option value="multiple_choice">Ko'p tanlov (bir nechta to'g'ri)</option>
+            <option value="short_answer">Qisqa yozma javob</option>
+          </select>
+        </div>
+
+        <!-- Time Limit -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Vaqt limiti</label>
+          <select id="setting-time" onchange="onSettingChange()" class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="10">10 soniya</option>
+            <option value="20">20 soniya</option>
+            <option value="30" selected>30 soniya (tavsiya etiladi)</option>
+            <option value="60">1 daqiqa</option>
+            <option value="90">1.5 daqiqa</option>
+            <option value="120">2 daqiqa</option>
+          </select>
+        </div>
+
+        <!-- Points -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1.5">Ball miqdori</label>
+          <select id="setting-points" onchange="onSettingChange()" class="w-full text-xs font-semibold text-slate-800 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            <option value="1000" selected>Standart (1000 ball)</option>
+            <option value="2000">Ikki barobar (2000 ball)</option>
+            <option value="0">Balsiz (faqat amaliyot)</option>
+          </select>
+        </div>
+
+        <!-- Actions -->
+        <div class="pt-4 border-t border-slate-100 space-y-2">
+          <button onclick="duplicateCurrentQuestion()" class="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+            <span>Savoldan nusxa olish</span>
+          </button>
+          <button onclick="deleteCurrentQuestion()" class="w-full py-2 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            <span>Savolni o'chirish</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Hint -->
+      <div class="p-3 bg-indigo-50/60 border border-indigo-100 rounded-2xl text-[11px] text-indigo-700">
+        <i data-lucide="check-circle" class="w-3.5 h-3.5 inline mr-1 text-indigo-600"></i>
+        Variant ustidagi doirachani bosib <strong>to'g'ri javobni</strong> belgilang.
+      </div>
+    </aside>
+
+  </div>
+
+  <script src="/js/auth.js"></script>
+  <script>
+    let currentTestId = null;
+    let currentTestObj = null;
+    let questions = [];
+    let currentQIdx = 0;
+
+    const KAHOOT_THEMES = [
+      { bg: "bg-red-500", textBg: "bg-red-50 border-red-200 text-red-900", icon: "▲", border: "border-red-400" },
+      { bg: "bg-blue-500", textBg: "bg-blue-50 border-blue-200 text-blue-900", icon: "◆", border: "border-blue-400" },
+      { bg: "bg-amber-500", textBg: "bg-amber-50 border-amber-200 text-amber-900", icon: "●", border: "border-amber-400" },
+      { bg: "bg-emerald-500", textBg: "bg-emerald-50 border-emerald-200 text-emerald-900", icon: "■", border: "border-emerald-400" }
+    ];
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      lucide.createIcons();
+      const params = new URLSearchParams(window.location.search);
+      currentTestId = params.get("id");
+
+      if (currentTestId) {
+        await loadExistingTest(currentTestId);
+      } else {
+        // Initialize with 1 default question
+        questions = [createNewQuestionObject(1)];
+        renderSlidesList();
+        renderActiveQuestionEditor();
+      }
+    });
+
+    function createNewQuestionObject(num = 1) {
+      return {
+        id: `q-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+        text: `Savol ${num}`,
+        type: "single_choice",
+        points: 1000,
+        timeLimit: 30,
+        imageUrl: "",
+        options: ["A variant", "B variant", "C variant", "D variant"],
+        correctAnswer: "A variant",
+        explanation: ""
+      };
+    }
+
+    async function loadExistingTest(id) {
+      try {
+        const res = await fetch(`/api/teacher-tests/${id}`);
+        if (!res.ok) throw new Error("Test topilmadi");
+        const data = await res.json();
+        currentTestObj = data;
+
+        document.getElementById("test-topic-input").value = data.topic || "Biologiya Testi";
+        if (data.classGrade) {
+          document.getElementById("test-grade-select").value = data.classGrade;
+        }
+
+        // Extract questions
+        if (data.questions && data.questions.length > 0) {
+          questions = data.questions;
+        } else if (data.levels && data.levels.length > 0) {
+          questions = [];
+          data.levels.forEach(lvl => {
+            (lvl.questions || []).forEach(q => {
+              const item = { ...q };
+              item.text = item.text || item.question || "Savol";
+              if (!item.correctAnswer && "answerIndex" in item && Array.isArray(item.options)) {
+                item.correctAnswer = item.options[item.answerIndex] || item.options[0];
+              }
+              item.points = item.points || 1000;
+              item.type = item.type || "single_choice";
+              questions.push(item);
+            });
+          });
+        }
+
+        if (questions.length === 0) {
+          questions = [createNewQuestionObject(1)];
+        }
+
+        currentQIdx = 0;
+        renderSlidesList();
+        renderActiveQuestionEditor();
+      } catch (err) {
+        alert("Xatolik: " + err.message);
+        window.location.href = "/teacher/test.html";
+      }
+    }
+
+    // Render Left Slides Navigator
+    function renderSlidesList() {
+      const container = document.getElementById("slides-container");
+      container.innerHTML = "";
+      document.getElementById("slide-badge-count").textContent = questions.length;
+      document.getElementById("question-count-indicator").textContent = `${questions.length} ta savol`;
+
+      questions.forEach((q, idx) => {
+        const isActive = idx === currentQIdx;
+        const slideEl = document.createElement("div");
+        slideEl.className = `p-3 rounded-2xl border-2 transition cursor-pointer select-none ${isActive ? 'slide-active border-indigo-600 bg-indigo-50 shadow-xs' : 'border-slate-200 bg-white hover:border-slate-300'}`;
+        slideEl.onclick = () => selectQuestionSlide(idx);
+
+        slideEl.innerHTML = `
+          <div class="flex items-center justify-between text-xs font-extrabold mb-1 ${isActive ? 'text-indigo-700' : 'text-slate-600'}">
+            <span>${idx + 1}-Savol</span>
+            <span class="text-[10px] text-slate-400 font-semibold">${q.timeLimit || 30}s</span>
+          </div>
+          <p class="text-[11px] text-slate-700 font-semibold truncate">${escapeHtml(q.text || "Savol matni yo'q")}</p>
+        `;
+        container.appendChild(slideEl);
+      });
+      lucide.createIcons();
+    }
+
+    function selectQuestionSlide(idx) {
+      currentQIdx = idx;
+      renderSlidesList();
+      renderActiveQuestionEditor();
+    }
+
+    // Render Active Question Canvas
+    function renderActiveQuestionEditor() {
+      const q = questions[currentQIdx];
+      if (!q) return;
+
+      document.getElementById("question-text-input").value = q.text || "";
+      document.getElementById("question-img-url").value = q.imageUrl || "";
+      document.getElementById("question-explanation-input").value = q.explanation || "";
+
+      // Preview image
+      const imgBox = document.getElementById("img-preview-box");
+      const imgTag = document.getElementById("img-preview-tag");
+      if (q.imageUrl) {
+        imgTag.src = q.imageUrl;
+        imgBox.classList.remove("hidden");
+      } else {
+        imgBox.classList.add("hidden");
+      }
+
+      // Settings
+      document.getElementById("setting-type").value = q.type || "single_choice";
+      document.getElementById("setting-time").value = String(q.timeLimit || 30);
+      document.getElementById("setting-points").value = String(q.points || 1000);
+
+      // Render Options
+      const answersContainer = document.getElementById("answers-editor-container");
+      answersContainer.innerHTML = "";
+
+      const qType = q.type || "single_choice";
+
+      if (qType === "true_false") {
+        renderTrueFalseEditor(q, answersContainer);
+      } else if (qType === "short_answer") {
+        renderShortAnswerEditor(q, answersContainer);
+      } else {
+        renderChoiceOptionsEditor(q, answersContainer, qType === "multiple_choice");
+      }
+
+      lucide.createIcons();
+    }
+
+    function renderChoiceOptionsEditor(q, container, isMultiple) {
+      const opts = q.options && q.options.length >= 2 ? q.options : ["Variant A", "Variant B", "Variant C", "Variant D"];
+      q.options = opts;
+
+      opts.forEach((optText, optIdx) => {
+        const theme = KAHOOT_THEMES[optIdx % KAHOOT_THEMES.length];
+        const isCorrect = isMultiple
+          ? (Array.isArray(q.correctAnswer) && q.correctAnswer.includes(optText))
+          : (String(q.correctAnswer).trim().toLowerCase() === String(optText).trim().toLowerCase());
+
+        const card = document.createElement("div");
+        card.className = `p-4 rounded-2xl border-2 transition ${isCorrect ? 'border-emerald-500 bg-emerald-50/40 shadow-xs' : 'border-slate-200 bg-white'}`;
+        card.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-xl ${theme.bg} text-white font-black text-sm flex items-center justify-center flex-shrink-0">
+              ${theme.icon}
+            </div>
+            <input 
+              type="text" 
+              class="w-full text-xs sm:text-sm font-bold text-slate-800 bg-transparent focus:outline-none"
+              value="${escapeHtml(optText)}"
+              placeholder="Variant matni..."
+              oninput="onOptionTextChange(${optIdx}, this.value)">
+            <button type="button" onclick="toggleOptionCorrect(${optIdx})" title="To'g'ri javob qilib belgilash"
+              class="w-8 h-8 rounded-full border-2 flex items-center justify-center transition flex-shrink-0 cursor-pointer ${isCorrect ? 'bg-emerald-500 border-emerald-500 text-white shadow-xs' : 'border-slate-300 text-transparent hover:border-slate-400'}">
+              <i data-lucide="check" class="w-4 h-4 text-white"></i>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    function renderTrueFalseEditor(q, container) {
+      container.className = "grid grid-cols-1 sm:grid-cols-2 gap-4";
+      const isTrueCorrect = String(q.correctAnswer).toLowerCase() === "true" || String(q.correctAnswer).toLowerCase() === "rost";
+
+      container.innerHTML = `
+        <div onclick="setTrueFalseCorrect('true')" class="p-6 rounded-2xl border-2 cursor-pointer transition flex items-center justify-between ${isTrueCorrect ? 'border-emerald-500 bg-emerald-50/50 shadow-md' : 'border-slate-200 bg-white hover:border-slate-300'}">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-emerald-500 text-white flex items-center justify-center font-black">✓</div>
+            <span class="text-sm font-black text-slate-800">ROST (To'g'ri)</span>
+          </div>
+          <div class="w-7 h-7 rounded-full border-2 flex items-center justify-center ${isTrueCorrect ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 text-transparent'}">
+            <i data-lucide="check" class="w-4 h-4 text-white"></i>
+          </div>
+        </div>
+
+        <div onclick="setTrueFalseCorrect('false')" class="p-6 rounded-2xl border-2 cursor-pointer transition flex items-center justify-between ${!isTrueCorrect ? 'border-red-500 bg-red-50/50 shadow-md' : 'border-slate-200 bg-white hover:border-slate-300'}">
+          <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-red-500 text-white flex items-center justify-center font-black">✕</div>
+            <span class="text-sm font-black text-slate-800">YOLG'ON (Noto'g'ri)</span>
+          </div>
+          <div class="w-7 h-7 rounded-full border-2 flex items-center justify-center ${!isTrueCorrect ? 'bg-red-500 border-red-500 text-white' : 'border-slate-300 text-transparent'}">
+            <i data-lucide="check" class="w-4 h-4 text-white"></i>
+          </div>
+        </div>
+      `;
+    }
+
+    function renderShortAnswerEditor(q, container) {
+      container.className = "col-span-2 bg-white border border-slate-200 rounded-2xl p-5";
+      container.innerHTML = `
+        <label class="block text-xs font-bold text-slate-700 mb-2">To'g'ri Yozma Javob</label>
+        <input 
+          type="text" 
+          value="${escapeHtml(String(q.correctAnswer || ''))}"
+          placeholder="To'g'ri so'z yoki iborani kiriting..."
+          class="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          oninput="questions[currentQIdx].correctAnswer = this.value">
+        <p class="text-[11px] text-slate-400 mt-2">O'quvchi ushbu so'zni yozganda javob to'g'ri deb hisoblanadi (katta-kichik harflar inobatga olinmaydi).</p>
+      `;
+    }
+
+    // Input handlers
+    function onQuestionContentChange() {
+      const q = questions[currentQIdx];
+      if (!q) return;
+
+      q.text = document.getElementById("question-text-input").value;
+      q.imageUrl = document.getElementById("question-img-url").value.trim();
+      q.explanation = document.getElementById("question-explanation-input").value;
+
+      const imgBox = document.getElementById("img-preview-box");
+      const imgTag = document.getElementById("img-preview-tag");
+      if (q.imageUrl) {
+        imgTag.src = q.imageUrl;
+        imgBox.classList.remove("hidden");
+      } else {
+        imgBox.classList.add("hidden");
+      }
+
+      renderSlidesList();
+    }
+
+    function onOptionTextChange(optIdx, val) {
+      const q = questions[currentQIdx];
+      if (!q || !q.options) return;
+      const oldVal = q.options[optIdx];
+      q.options[optIdx] = val;
+      if (q.correctAnswer === oldVal) {
+        q.correctAnswer = val;
+      }
+    }
+
+    function toggleOptionCorrect(optIdx) {
+      const q = questions[currentQIdx];
+      if (!q || !q.options) return;
+      const val = q.options[optIdx];
+
+      if (q.type === "multiple_choice") {
+        let arr = Array.isArray(q.correctAnswer) ? q.correctAnswer : [q.correctAnswer].filter(Boolean);
+        if (arr.includes(val)) {
+          arr = arr.filter(x => x !== val);
+        } else {
+          arr.push(val);
+        }
+        q.correctAnswer = arr;
+      } else {
+        q.correctAnswer = val;
+      }
+
+      renderActiveQuestionEditor();
+    }
+
+    function setTrueFalseCorrect(val) {
+      const q = questions[currentQIdx];
+      q.correctAnswer = val;
+      renderActiveQuestionEditor();
+    }
+
+    function onSettingChange() {
+      const q = questions[currentQIdx];
+      if (!q) return;
+
+      q.type = document.getElementById("setting-type").value;
+      q.timeLimit = parseInt(document.getElementById("setting-time").value) || 30;
+      q.points = parseInt(document.getElementById("setting-points").value) || 1000;
+
+      if (q.type === "true_false") {
+        q.options = ["true", "false"];
+        q.correctAnswer = "true";
+      }
+
+      renderSlidesList();
+      renderActiveQuestionEditor();
+    }
+
+    function addNewQuestion() {
+      const newQ = createNewQuestionObject(questions.length + 1);
+      questions.push(newQ);
+      currentQIdx = questions.length - 1;
+      renderSlidesList();
+      renderActiveQuestionEditor();
+    }
+
+    function duplicateCurrentQuestion() {
+      const cur = questions[currentQIdx];
+      if (!cur) return;
+      const copy = JSON.parse(JSON.stringify(cur));
+      copy.id = `q-${Date.now()}`;
+      copy.text = `${copy.text} (Nusxa)`;
+      questions.splice(currentQIdx + 1, 0, copy);
+      currentQIdx++;
+      renderSlidesList();
+      renderActiveQuestionEditor();
+    }
+
+    function deleteCurrentQuestion() {
+      if (questions.length <= 1) {
+        alert("Testda kamida bitta savol bo'lishi shart!");
+        return;
+      }
+      if (!confirm("Ushbu savolni o'chirmoqchimisiz?")) return;
+      questions.splice(currentQIdx, 1);
+      if (currentQIdx >= questions.length) {
+        currentQIdx = questions.length - 1;
+      }
+      renderSlidesList();
+      renderActiveQuestionEditor();
+    }
+
+    // Save Test to Backend
+    async function saveTest() {
+      const topic = document.getElementById("test-topic-input").value.trim();
+      const grade = document.getElementById("test-grade-select").value;
+
+      if (!topic) {
+        alert("Iltimos, test mavzusini kiriting!");
+        document.getElementById("test-topic-input").focus();
+        return;
+      }
+
+      // Validate each question
+      for (let i = 0; i < questions.length; i++) {
+        const q = questions[i];
+        if (!q.text || !q.text.trim()) {
+          alert(`${i + 1}-savol matni bo'sh!`);
+          selectQuestionSlide(i);
+          return;
+        }
+        if (!q.correctAnswer || (Array.isArray(q.correctAnswer) && q.correctAnswer.length === 0)) {
+          alert(`${i + 1}-savolda to'g'ri javob belgilanmagan!`);
+          selectQuestionSlide(i);
+          return;
+        }
+      }
+
+      const saveBtn = document.getElementById("save-test-btn");
+      saveBtn.disabled = true;
+      saveBtn.innerHTML = `
+        <div class="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+        <span>Saqlanmoqda...</span>
+      `;
+
+      const user = window.Auth ? window.Auth.getCurrentUser() : null;
+
+      const payload = {
+        id: currentTestId || undefined,
+        topic: topic,
+        subject: "Biologiya",
+        classGrade: grade,
+        teacherId: user ? user.id : "teacher-1",
+        teacherName: user ? user.fullName : "Ustoz",
+        questions: questions
+      };
+
+      try {
+        const res = await fetch("/api/teacher-tests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || "Saqlashda xatolik");
+
+        alert("Test muvaffaqiyatli saqlandi!");
+        window.location.href = "/teacher/test.html";
+      } catch (err) {
+        alert("Xatolik yuz berdi: " + err.message);
+        saveBtn.disabled = false;
+        saveBtn.innerHTML = `
+          <i data-lucide="save" class="w-4 h-4"></i>
+          <span>Saqlash</span>
+        `;
+        lucide.createIcons();
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str || "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+  </script>
+</body>
+</html>
