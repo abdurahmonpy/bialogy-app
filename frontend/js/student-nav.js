@@ -1,21 +1,44 @@
-// Student Navigation Sidebar Component
+// Student Navigation Component (Desktop Sidebar + Mobile Native Bottom Bar)
 (function() {
   const currentPath = window.location.pathname.replace(/\/$/, "");
   
   const menuItems = [
-    { label: "Bosh sahifa", path: "/student/index.html", cleanPath: "/student", icon: "layout-dashboard" },
-    { label: "Resurslar", path: "/student/resources.html", cleanPath: "/student/resources", icon: "book-open" },
-    { label: "Chat", path: "/student/chat.html", cleanPath: "/student/chat", icon: "message-circle" },
-    { label: "Uyga vazifa", path: "/student/homework.html", cleanPath: "/student/homework", icon: "clipboard-list" },
-    { label: "Test", path: "/student/test.html", cleanPath: "/student/test", icon: "check-circle-2" }
+    { label: "Bosh sahifa", shortLabel: "Asosiy", path: "/student/index.html", cleanPath: "/student", icon: "layout-dashboard" },
+    { label: "Resurslar", shortLabel: "Resurslar", path: "/student/resources.html", cleanPath: "/student/resources", icon: "book-open" },
+    { label: "Chat", shortLabel: "Chat", path: "/student/chat.html", cleanPath: "/student/chat", icon: "message-circle" },
+    { label: "Uyga vazifa", shortLabel: "Vazifalar", path: "/student/homework.html", cleanPath: "/student/homework", icon: "clipboard-list" },
+    { label: "Test", shortLabel: "Test", path: "/student/test.html", cleanPath: "/student/test", icon: "check-circle-2" }
   ];
+
+  // Mobile Bottom Bar items order: Asosiy -> Resurslar -> Test (Markaz) -> Vazifalar -> Chat
+  const bottomBarItems = [
+    { label: "Bosh sahifa", shortLabel: "Asosiy", path: "/student/index.html", cleanPath: "/student", icon: "layout-dashboard" },
+    { label: "Resurslar", shortLabel: "Resurslar", path: "/student/resources.html", cleanPath: "/student/resources", icon: "book-open" },
+    { label: "Test", shortLabel: "Test", path: "/student/test.html", cleanPath: "/student/test", icon: "check-circle-2", isCenter: true },
+    { label: "Uyga vazifa", shortLabel: "Vazifalar", path: "/student/homework.html", cleanPath: "/student/homework", icon: "clipboard-list" },
+    { label: "Chat", shortLabel: "Chat", path: "/student/chat.html", cleanPath: "/student/chat", icon: "message-circle" }
+  ];
+
+  // Inject mobile bottom padding style globally
+  if (!document.getElementById("bioedu-student-bottom-style")) {
+    const style = document.createElement("style");
+    style.id = "bioedu-student-bottom-style";
+    style.textContent = `
+      @media (max-width: 1023px) {
+        body {
+          padding-bottom: 74px !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
 
   window.renderStudentSidebar = function(activeKey = "") {
     const user = (window.Auth && window.Auth.getCurrentUser()) || { fullName: "O'quvchi", classGrade: "O'quvchi", avatar: "O" };
 
     const navLinksHtml = menuItems.map(item => {
       const isActive = activeKey 
-        ? item.label.toLowerCase() === activeKey.toLowerCase()
+        ? (item.label.toLowerCase() === activeKey.toLowerCase() || item.shortLabel.toLowerCase() === activeKey.toLowerCase())
         : (currentPath === item.cleanPath || currentPath === item.path || (item.cleanPath === "/student" && (currentPath === "" || currentPath === "/student")));
 
       const activeClasses = isActive
@@ -31,11 +54,49 @@
       `;
     }).join("");
 
+    // Mobile App-Style Bottom Navigation Bar Links
+    const bottomNavHtml = bottomBarItems.map(item => {
+      const isActive = activeKey 
+        ? (item.label.toLowerCase() === activeKey.toLowerCase() || item.shortLabel.toLowerCase() === activeKey.toLowerCase())
+        : (currentPath === item.cleanPath || currentPath === item.path || (item.cleanPath === "/student" && (currentPath === "" || currentPath === "/student")));
+
+      const isTestCenter = item.isCenter;
+
+      if (isTestCenter) {
+        return `
+          <a href="${item.path}" class="flex flex-col items-center justify-center flex-1 py-1 transition-transform active:scale-95 select-none ${isActive ? 'text-emerald-600' : 'text-slate-500'}">
+            <div class="relative flex items-center justify-center w-11 h-11 -mt-4 rounded-full ${isActive ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-600/35 ring-4 ring-white' : 'bg-gradient-to-tr from-emerald-500 to-teal-600 text-white shadow-md shadow-emerald-500/25 ring-4 ring-white'} transition-all">
+              <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+              <span id="student-bottom-test-badge" class="hidden absolute top-0.5 right-0.5 w-2.5 h-2.5 rounded-full bg-amber-400 ring-2 ring-white animate-ping"></span>
+            </div>
+            <span class="text-[10px] ${isActive ? 'font-black text-emerald-600' : 'font-bold text-slate-600'} tracking-tight mt-0.5">${item.shortLabel}</span>
+          </a>
+        `;
+      }
+
+      const activeClasses = isActive
+        ? "text-emerald-600 font-extrabold"
+        : "text-slate-400 hover:text-slate-600 font-semibold";
+
+      const iconPill = isActive
+        ? "bg-emerald-50 text-emerald-600"
+        : "text-slate-400";
+
+      return `
+        <a href="${item.path}" class="flex flex-col items-center justify-center flex-1 py-1 transition-transform active:scale-90 select-none ${activeClasses}">
+          <div class="relative flex items-center justify-center px-2.5 py-1 rounded-full ${iconPill} transition-all">
+            <i data-lucide="${item.icon}" class="w-5 h-5"></i>
+          </div>
+          <span class="text-[10px] tracking-tight mt-0.5 leading-none">${item.shortLabel}</span>
+        </a>
+      `;
+    }).join("");
+
     const sidebarContainer = document.getElementById("student-sidebar");
     if (!sidebarContainer) return;
 
     sidebarContainer.innerHTML = `
-      <!-- Desktop Sidebar -->
+      <!-- Desktop Sidebar (Only visible on lg+) -->
       <aside id="desktop-sidebar" class="hidden lg:flex flex-col w-72 h-screen sticky top-0 bg-white border-r border-slate-200/80 p-5 shadow-sm z-30 transition-all duration-200">
         <!-- Logo -->
         <div class="flex items-center justify-between px-2 py-3 mb-6">
@@ -82,62 +143,43 @@
         <i data-lucide="panel-left-open" class="w-5 h-5"></i>
       </button>
 
-      <!-- Mobile Header & Drawer -->
-      <div class="lg:hidden sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-slate-200 px-4 py-3 flex items-center justify-between">
+      <!-- Mobile Top App Header (Clean & Modern Native Feel) -->
+      <div class="lg:hidden sticky top-0 z-30 bg-white/95 backdrop-blur-md border-b border-slate-200/80 px-4 py-2.5 flex items-center justify-between shadow-xs">
         <div class="flex items-center gap-2.5">
-          <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
-            <i data-lucide="dna" class="w-5 h-5"></i>
+          <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-sm shadow-emerald-500/20">
+            <i data-lucide="dna" class="w-4.5 h-4.5"></i>
           </div>
-          <span class="font-bold text-slate-800 text-sm">BioEdu O'quvchi</span>
+          <div>
+            <span class="font-extrabold text-slate-800 text-sm tracking-tight block leading-tight">BioEdu</span>
+            <span class="text-[10px] text-emerald-600 font-bold leading-none">${user.classGrade || "O'quvchi Kabineti"}</span>
+          </div>
         </div>
-        <button id="mobile-menu-btn" class="p-2 text-slate-600 hover:bg-slate-100 rounded-lg">
-          <i data-lucide="menu" class="w-6 h-6"></i>
-        </button>
+
+        <!-- User Chip & Logout (No hamburger menu needed!) -->
+        <div class="flex items-center gap-2">
+          <div class="flex items-center gap-2 pl-2.5 pr-1.5 py-1 bg-slate-100/80 border border-slate-200/80 rounded-full">
+            <span class="text-xs font-bold text-slate-700 truncate max-w-[110px]">${(user.fullName || "O'quvchi").split(" ")[0]}</span>
+            <div class="w-6 h-6 rounded-full bg-emerald-500 text-white font-black text-[10px] flex items-center justify-center shadow-xs">
+              ${user.avatar || user.fullName?.[0] || 'O'}
+            </div>
+          </div>
+          <button onclick="Auth.logout()" title="Tizimdan chiqish" class="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition cursor-pointer">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
+          </button>
+        </div>
       </div>
 
-      <!-- Mobile Drawer Modal -->
-      <div id="mobile-drawer" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 hidden">
-        <div class="bg-white w-72 h-full p-5 flex flex-col shadow-2xl">
-          <div class="flex items-center justify-between pb-4 border-b border-slate-100 mb-4">
-            <div class="flex items-center gap-2.5">
-              <div class="w-8 h-8 rounded-lg bg-emerald-600 flex items-center justify-center text-white">
-                <i data-lucide="dna" class="w-5 h-5"></i>
-              </div>
-              <span class="font-bold text-slate-800">O'quvchi Kabineti</span>
-            </div>
-            <button id="close-drawer-btn" class="p-1.5 text-slate-400 hover:text-slate-700">
-              <i data-lucide="x" class="w-5 h-5"></i>
-            </button>
-          </div>
-          <nav class="space-y-1.5 flex-1">
-            ${navLinksHtml}
-          </nav>
-          <div class="pt-4 border-t border-slate-100 mt-auto">
-            <button onclick="Auth.logout()" class="w-full flex items-center justify-center gap-2 p-3 text-red-600 bg-red-50 hover:bg-red-100 rounded-xl font-medium transition text-sm">
-              <i data-lucide="log-out" class="w-4 h-4"></i>
-              Tizimdan chiqish
-            </button>
-          </div>
+      <!-- Mobile App Bottom Navigation Bar -->
+      <nav id="student-bottom-nav" class="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-xl border-t border-slate-200/90 shadow-[0_-4px_24px_rgba(0,0,0,0.06)] px-2 pt-1 pb-[calc(env(safe-area-inset-bottom,4px)+6px)]">
+        <div class="flex items-center justify-around max-w-md mx-auto">
+          ${bottomNavHtml}
         </div>
-      </div>
+      </nav>
     `;
 
     // Initialize icons
     if (window.lucide) {
       window.lucide.createIcons();
-    }
-
-    // Attach drawer events
-    const menuBtn = document.getElementById("mobile-menu-btn");
-    const drawer = document.getElementById("mobile-drawer");
-    const closeBtn = document.getElementById("close-drawer-btn");
-
-    if (menuBtn && drawer && closeBtn) {
-      menuBtn.addEventListener("click", () => drawer.classList.remove("hidden"));
-      closeBtn.addEventListener("click", () => drawer.classList.add("hidden"));
-      drawer.addEventListener("click", (e) => {
-        if (e.target === drawer) drawer.classList.add("hidden");
-      });
     }
 
     const isClosed = localStorage.getItem("student_sidebar_closed") === "true";
@@ -201,8 +243,12 @@
         if (activeList.length > 0) {
           const latestTest = activeList[0];
           showLiveTestBanner(latestTest);
+          const testBadge = document.getElementById("student-bottom-test-badge");
+          if (testBadge) testBadge.classList.remove("hidden");
         } else {
           hideLiveTestBanner();
+          const testBadge = document.getElementById("student-bottom-test-badge");
+          if (testBadge) testBadge.classList.add("hidden");
         }
       } catch (err) {
         // Silent network retry
