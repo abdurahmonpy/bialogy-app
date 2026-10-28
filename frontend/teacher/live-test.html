@@ -374,17 +374,20 @@
       try {
         const res = await fetch(`/api/live-test/session/${sessionId}`);
         if (!res.ok) throw new Error("Sessiya topilmadi");
-        sessionData = await res.json();
+        const json = await res.json();
+        sessionData = json.session || json;
 
         // Update header & titles
         document.getElementById("header-test-title").textContent = sessionData.testTitle || "Jonli Test";
         document.getElementById("header-group-subtitle").textContent = sessionData.groupName ? `Guruh: ${sessionData.groupName}` : "Barcha o'quvchilar";
         document.getElementById("lobby-test-title").textContent = sessionData.testTitle || "Jonli Test";
         document.getElementById("lobby-group-name").textContent = sessionData.groupName ? `Guruh: ${sessionData.groupName}` : "Barcha o'quvchilar";
-        document.getElementById("display-join-code").textContent = sessionData.code;
+        document.getElementById("display-join-code").textContent = sessionData.code || "------";
 
         // Render QR Code
-        renderQRCode(sessionData.code);
+        if (sessionData.code) {
+          renderQRCode(sessionData.code);
+        }
 
         // State check
         if (sessionData.status === "active") {

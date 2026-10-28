@@ -209,13 +209,13 @@
     
     <!-- Runner Top Header Bar -->
     <header class="bg-slate-900/80 backdrop-blur-md border border-white/10 rounded-2xl p-3 sm:p-4 mb-4 flex items-center justify-between shadow-lg">
-      <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2.5">
         <div class="px-3 py-1 bg-white/10 rounded-xl text-xs sm:text-sm font-bold text-white border border-white/10">
           <span id="current-q-num">1</span> / <span id="total-q-num">10</span>
         </div>
-        <span id="q-category-badge" class="hidden sm:inline-block px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-xs font-semibold border border-purple-500/30">
-          Biologiya
-        </span>
+        <div class="px-2.5 py-1 bg-indigo-500/20 text-indigo-300 rounded-xl text-xs font-mono font-bold border border-indigo-500/30">
+          PIN: <span id="runner-code-display">------</span>
+        </div>
       </div>
 
       <!-- Live Timer -->
@@ -291,61 +291,156 @@
     </footer>
   </section>
 
-  <!-- STATE 3: FINAL RESULTS SCREEN -->
-  <section id="results-view" class="flex-1 flex flex-col justify-center items-center hidden p-4 sm:p-6 max-w-xl mx-auto w-full text-center">
+  <!-- STATE 3: FINAL RESULTS SCREEN (OQ FON - WHITE THEME) -->
+  <section id="results-view" class="hidden flex-1 flex flex-col p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-6">
     <!-- Confetti Canvas -->
     <canvas id="confetti-canvas" class="fixed inset-0 pointer-events-none z-40"></canvas>
 
-    <div class="w-full bg-white/10 backdrop-blur-xl border border-white/20 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-      <!-- Glow -->
-      <div class="absolute -top-16 -right-16 w-36 h-36 bg-amber-500/20 rounded-full blur-2xl pointer-events-none"></div>
-
-      <div class="w-20 h-20 rounded-3xl bg-gradient-to-tr from-amber-400 to-orange-500 text-slate-950 flex items-center justify-center mx-auto mb-4 shadow-xl shadow-amber-500/30 floating-card">
-        <i data-lucide="award" class="w-10 h-10"></i>
-      </div>
-
-      <h1 class="text-2xl sm:text-3xl font-black text-white tracking-tight mb-1">
-        Sinov Yakunlandi!
-      </h1>
-      <p class="text-xs sm:text-sm text-slate-300 mb-6">
-        Natijalaringiz muvaffaqiyatli saqlandi va o'qituvchiga yuborildi.
-      </p>
-
-      <!-- Score KPI Card -->
-      <div class="grid grid-cols-3 gap-3 p-4 bg-slate-900/90 border border-white/10 rounded-2xl mb-6">
+    <!-- Top Results Navigation / Status Bar -->
+    <div class="flex items-center justify-between pb-3 border-b border-slate-200">
+      <div class="flex items-center gap-2">
+        <a href="/student/test.html" class="p-2 text-slate-500 hover:text-slate-900 hover:bg-slate-200/60 rounded-xl transition cursor-pointer" title="Test markaziga qaytish">
+          <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
         <div>
-          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Ball</span>
-          <span id="result-score" class="text-xl sm:text-2xl font-black text-amber-400 font-mono">0</span>
-        </div>
-        <div>
-          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">To'g'ri</span>
-          <span id="result-correct" class="text-xl sm:text-2xl font-black text-emerald-400 font-mono">0</span>
-        </div>
-        <div>
-          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider">Aniqlik</span>
-          <span id="result-accuracy" class="text-xl sm:text-2xl font-black text-purple-400 font-mono">0%</span>
+          <h2 class="text-base sm:text-lg font-black text-slate-900" id="results-test-title">Biologiya Jonli Testi</h2>
+          <p class="text-[11px] text-slate-500" id="results-subtitle">Guruh sinovi yakunlandi</p>
         </div>
       </div>
-
-      <!-- Optional Detailed Review (if enabled by teacher) -->
-      <div id="review-container" class="hidden mb-6 text-left">
-        <h3 class="text-xs font-bold uppercase tracking-wider text-slate-400 mb-3 flex items-center gap-2">
-          <i data-lucide="list-checks" class="w-4 h-4 text-emerald-400"></i>
-          Savollar tahlili va to'g'ri javoblar
-        </h3>
-        <div id="review-list" class="space-y-3 max-h-60 overflow-y-auto pr-1">
-          <!-- Injected via JS -->
-        </div>
-      </div>
-
-      <!-- Actions -->
-      <div class="space-y-2">
-        <button onclick="exitKioskAndReturn()" class="w-full py-4 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-black text-base rounded-2xl shadow-xl shadow-emerald-500/30 transition flex items-center justify-center gap-2 cursor-pointer">
-          <i data-lucide="check-circle" class="w-5 h-5"></i>
-          <span>Test Markaziga Qaytish</span>
-        </button>
+      <div class="flex items-center gap-2">
+        <span class="px-3 py-1 bg-indigo-50 border border-indigo-200 text-indigo-700 rounded-xl text-xs font-mono font-black">
+          PIN: <strong id="results-code-display">------</strong>
+        </span>
+        <span class="px-3 py-1 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-xl text-xs font-black">
+          Yakunlandi
+        </span>
       </div>
     </div>
+
+    <!-- Main Results Hero Card with Circular Gauge Diagram -->
+    <div class="bg-white rounded-3xl border border-slate-200/80 shadow-xs p-6 sm:p-8">
+      <div class="flex flex-col md:flex-row items-center justify-between gap-6">
+        
+        <!-- Left: Circular Percentage Diagram -->
+        <div class="flex flex-col items-center justify-center flex-shrink-0">
+          <div class="relative w-36 h-36 flex items-center justify-center">
+            <svg class="w-36 h-36 transform -rotate-90" viewBox="0 0 120 120">
+              <circle cx="60" cy="60" r="50" stroke="#f1f5f9" stroke-width="10" fill="transparent" />
+              <circle id="diagram-circle" cx="60" cy="60" r="50" stroke="#4f46e5" stroke-width="10" 
+                      stroke-dasharray="314.159" stroke-dashoffset="314.159" stroke-linecap="round" fill="transparent" 
+                      class="transition-all duration-1000 ease-out" />
+            </svg>
+            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+              <span id="diagram-pct" class="text-3xl font-black text-slate-900 font-mono">0%</span>
+              <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aniqlik</span>
+            </div>
+          </div>
+          <div id="diagram-badge" class="mt-3 px-3 py-1 rounded-full text-xs font-black bg-indigo-50 text-indigo-700 border border-indigo-200 text-center">
+            Hisoblanmoqda...
+          </div>
+        </div>
+
+        <!-- Right: Congratulatory Heading & Summary Text -->
+        <div class="text-center md:text-left flex-1 space-y-2">
+          <div class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 text-xs font-black">
+            <i data-lucide="award" class="w-3.5 h-3.5 text-emerald-600"></i>
+            <span>Sinov Muvaffaqiyatli Yakunlandi</span>
+          </div>
+          <h1 class="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+            Natijalaringiz Saqlandi!
+          </h1>
+          <p class="text-xs sm:text-sm text-slate-500 max-w-lg">
+            Siz barcha savollarga javob berdingiz. Natijangiz avtomatik tarzda o'qituvchining jonli boshqaruv paneliga yuborildi.
+          </p>
+
+          <div class="pt-2 flex flex-wrap gap-2 justify-center md:justify-start">
+            <button onclick="window.print()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer">
+              <i data-lucide="printer" class="w-3.5 h-3.5"></i>
+              <span>Chop etish / Saqlash</span>
+            </button>
+            <button onclick="exitKioskAndReturn()" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-black shadow transition flex items-center gap-1.5 cursor-pointer">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5"></i>
+              <span>Test Markaziga Qaytish</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- 4 KPI Stat Cards (Crisp White) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">To'plangan Ball</span>
+          <span id="result-score" class="text-xl sm:text-2xl font-black text-amber-500 font-mono">0</span>
+          <span class="text-[10px] text-slate-400 block font-semibold">Tezlik bonusi bilan</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-amber-50 text-amber-500 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="award" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">To'g'ri Javoblar</span>
+          <span id="result-correct" class="text-xl sm:text-2xl font-black text-emerald-600 font-mono">0 / 0</span>
+          <span class="text-[10px] text-emerald-600 block font-bold">To'g'ri topildi</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="check-circle-2" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Aniqlik</span>
+          <span id="result-accuracy" class="text-xl sm:text-2xl font-black text-indigo-600 font-mono">0%</span>
+          <span class="text-[10px] text-slate-400 block font-semibold">Umumiy ko'rsatkich</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="pie-chart" class="w-5 h-5"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+        <div>
+          <span class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Qoidabuzarlik</span>
+          <span id="result-cheat-count" class="text-xl sm:text-2xl font-black text-slate-700 font-mono">0 ta</span>
+          <span class="text-[10px] text-slate-400 block font-semibold" id="result-cheat-label">Chetlanish yo'q</span>
+        </div>
+        <div class="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center flex-shrink-0">
+          <i data-lucide="shield" class="w-5 h-5"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Detailed Question Review Section -->
+    <div id="review-container" class="space-y-4">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-200">
+        <div class="flex items-center gap-2">
+          <i data-lucide="list-checks" class="w-4 h-4 text-indigo-600"></i>
+          <h3 class="text-sm font-black text-slate-800 uppercase tracking-wider">
+            Savollar Tahlili va To'g'ri Javoblar
+          </h3>
+        </div>
+        <span class="text-xs font-bold text-slate-400" id="review-question-count">0 ta savol</span>
+      </div>
+
+      <!-- Question Cards List -->
+      <div id="review-list" class="space-y-3.5">
+        <!-- Rendered via JS -->
+      </div>
+    </div>
+
+    <!-- Bottom Return Action -->
+    <div class="pt-4 pb-12 text-center">
+      <button onclick="exitKioskAndReturn()" class="px-8 py-3.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-sm rounded-2xl shadow-lg shadow-emerald-600/25 transition flex items-center justify-center gap-2 mx-auto cursor-pointer">
+        <i data-lucide="check-circle" class="w-4 h-4"></i>
+        <span>Test Markaziga Qaytish</span>
+      </button>
+    </div>
+
   </section>
 
   <!-- CONFETTI HELPER -->
@@ -910,15 +1005,39 @@
       }
     }
 
-    // 8. Results View
+    // 8. Results View (OQ FON - WHITE THEME)
     async function showResultsScreen() {
       clearInterval(questionTimerInterval);
       lobbyView.classList.add("hidden");
       runnerView.classList.add("hidden");
       resultsView.classList.remove("hidden");
 
+      // Switch Entire Page to Clean White Theme
+      document.body.className = "bg-slate-50 text-slate-800 min-h-screen flex flex-col justify-between overflow-x-hidden selection:bg-indigo-500 selection:text-white";
+
       SFX.fanfare();
       launchConfetti();
+
+      // Display Code, Test Title, and Group
+      const code = sessionData?.code || testCode || "------";
+      const codeDisplay = document.getElementById("results-code-display");
+      if (codeDisplay) codeDisplay.textContent = code;
+
+      if (sessionData?.testTitle) {
+        document.getElementById("results-test-title").textContent = sessionData.testTitle;
+      }
+      if (sessionData?.groupName) {
+        document.getElementById("results-subtitle").textContent = `Guruh: ${sessionData.groupName} • ${participantData?.studentName || "O'quvchi"}`;
+      }
+
+      // Cheat Count
+      const cheatEl = document.getElementById("result-cheat-count");
+      if (cheatEl) cheatEl.textContent = `${cheatCount} ta`;
+      const cheatLabel = document.getElementById("result-cheat-label");
+      if (cheatLabel && cheatCount > 0) {
+        cheatLabel.textContent = `${cheatCount} marta chetlandi!`;
+        cheatLabel.className = "text-[10px] text-red-500 font-bold block";
+      }
 
       // Fetch fresh participant and session results
       try {
@@ -934,22 +1053,60 @@
             const acc = totalQ > 0 ? Math.round(((myResult.correctCount || 0) / totalQ) * 100) : 0;
             document.getElementById("result-accuracy").textContent = `${acc}%`;
 
-            // If teacher allowed showing results & answers
+            // Animate Circular Diagram
+            updateCircularDiagram(acc);
+
+            // Review questions with full details
             const questionsForReview = (data.questions && data.questions.length > 0) ? data.questions : (data.session?.questions || questionsList);
-            if (data.session?.settings?.showResultsToStudents) {
-              renderDetailedReview(questionsForReview, myResult.answers);
-            }
+            renderDetailedReview(questionsForReview, myResult.answers);
           }
         }
       } catch (e) {
         console.error("Results fetch error:", e);
       }
+      lucide.createIcons();
+    }
+
+    // Circular Gauge Diagram Handler
+    function updateCircularDiagram(acc) {
+      const circle = document.getElementById("diagram-circle");
+      const text = document.getElementById("diagram-pct");
+      const badge = document.getElementById("diagram-badge");
+      if (!circle || !text) return;
+
+      text.textContent = `${acc}%`;
+
+      // Circumference for r=50 is 2 * PI * 50 = 314.159
+      const circumference = 314.159;
+      const offset = Math.max(0, circumference - (acc / 100) * circumference);
+      circle.style.strokeDashoffset = offset;
+
+      if (acc >= 80) {
+        circle.setAttribute("stroke", "#10b981"); // emerald
+        if (badge) {
+          badge.className = "mt-3 px-3 py-1 rounded-full text-xs font-black bg-emerald-50 text-emerald-700 border border-emerald-200 text-center";
+          badge.textContent = "A'lo natija! 🏆";
+        }
+      } else if (acc >= 50) {
+        circle.setAttribute("stroke", "#f59e0b"); // amber
+        if (badge) {
+          badge.className = "mt-3 px-3 py-1 rounded-full text-xs font-black bg-amber-50 text-amber-700 border border-amber-200 text-center";
+          badge.textContent = "Yaxshi natija! 🎯";
+        }
+      } else {
+        circle.setAttribute("stroke", "#f43f5e"); // rose
+        if (badge) {
+          badge.className = "mt-3 px-3 py-1 rounded-full text-xs font-black bg-rose-50 text-rose-700 border border-rose-200 text-center";
+          badge.textContent = "Takrorlash tavsiya etiladi 📚";
+        }
+      }
     }
 
     function renderDetailedReview(allQuestions, myAnswers) {
-      const reviewContainer = document.getElementById("review-container");
       const reviewList = document.getElementById("review-list");
-      reviewContainer.classList.remove("hidden");
+      const countEl = document.getElementById("review-question-count");
+      if (countEl) countEl.textContent = `${(allQuestions || []).length} ta savol`;
+      if (!reviewList) return;
       reviewList.innerHTML = "";
 
       (allQuestions || []).forEach((q, idx) => {
@@ -963,24 +1120,63 @@
         if (!correctStr) correctStr = "Belgilanmagan";
 
         const qTitle = q.text || q.question || `${idx + 1}-savol`;
+        const studentAns = (ansObj.answer !== undefined && ansObj.answer !== null) ? ansObj.answer : "Javob berilmadi";
 
-        const row = document.createElement("div");
-        row.className = `p-3.5 rounded-2xl border text-xs ${isCorr ? 'bg-emerald-950/40 border-emerald-500/40' : 'bg-red-950/40 border-red-500/40'}`;
-        row.innerHTML = `
-          <div class="flex items-center justify-between mb-1.5">
-            <span class="font-extrabold text-white text-xs sm:text-sm">${idx + 1}-savol: ${escapeHtml(qTitle)}</span>
-            <span class="px-2 py-0.5 rounded text-[10px] font-black ${isCorr ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' : 'bg-red-500/20 text-red-300 border border-red-500/30'}">
-              ${isCorr ? '✓ To\'g\'ri' : '✕ Xato'}
+        const card = document.createElement("div");
+        card.className = `p-4 sm:p-5 rounded-2xl border transition ${
+          isCorr 
+            ? 'bg-white border-emerald-200 shadow-xs' 
+            : 'bg-white border-rose-200 shadow-xs'
+        }`;
+
+        card.innerHTML = `
+          <div class="flex items-start justify-between gap-3 mb-3">
+            <div class="flex items-center gap-2">
+              <span class="w-7 h-7 rounded-lg ${isCorr ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'} text-xs font-black flex items-center justify-center flex-shrink-0">
+                ${idx + 1}
+              </span>
+              <h4 class="text-xs sm:text-sm font-extrabold text-slate-900 leading-snug">
+                ${escapeHtml(qTitle)}
+              </h4>
+            </div>
+            <span class="px-2.5 py-1 rounded-lg text-[11px] font-black flex-shrink-0 ${
+              isCorr 
+                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                : 'bg-rose-50 text-rose-700 border border-rose-200'
+            }">
+              ${isCorr ? '✓ To\'g\'ri (+1000 ball)' : '✕ Xato (0 ball)'}
             </span>
           </div>
-          <div class="space-y-0.5">
-            <p class="text-slate-300">Sizning javobingiz: <strong class="${isCorr ? 'text-emerald-300' : 'text-red-300'}">${escapeHtml(String(ansObj.answer !== undefined && ansObj.answer !== null ? ansObj.answer : 'Javob berilmadi'))}</strong></p>
-            <p class="text-emerald-300">To'g'ri javob: <strong class="text-white">${escapeHtml(String(correctStr))}</strong></p>
-            ${q.explanation ? `<p class="text-slate-400 text-[11px] mt-1.5 pt-1 border-t border-white/10 italic">Izoh: ${escapeHtml(q.explanation)}</p>` : ''}
+
+          <div class="space-y-2 text-xs">
+            <div class="p-3 rounded-xl ${isCorr ? 'bg-emerald-50/70 border border-emerald-200/60' : 'bg-rose-50/70 border border-rose-200/60'}">
+              <span class="font-bold text-slate-500 block text-[10px] uppercase tracking-wider mb-0.5">Sizning javobingiz:</span>
+              <span class="font-bold ${isCorr ? 'text-emerald-800' : 'text-rose-800'} text-xs sm:text-sm">
+                ${escapeHtml(String(studentAns))}
+              </span>
+            </div>
+
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200/80">
+              <span class="font-bold text-slate-500 block text-[10px] uppercase tracking-wider mb-0.5">To'g'ri javob:</span>
+              <span class="font-extrabold text-emerald-700 text-xs sm:text-sm flex items-center gap-1.5">
+                <i data-lucide="check" class="w-4 h-4 text-emerald-600"></i>
+                ${escapeHtml(String(correctStr))}
+              </span>
+            </div>
+
+            ${q.explanation ? `
+              <div class="p-3 rounded-xl bg-indigo-50/50 border border-indigo-100 text-slate-600 text-[11px]">
+                <strong class="text-indigo-700 flex items-center gap-1 mb-1">
+                  <i data-lucide="info" class="w-3.5 h-3.5"></i> Ilmiy Izoh:
+                </strong>
+                ${escapeHtml(q.explanation)}
+              </div>
+            ` : ''}
           </div>
         `;
-        reviewList.appendChild(row);
+        reviewList.appendChild(card);
       });
+
       lucide.createIcons();
     }
 

@@ -143,15 +143,15 @@
     });
 
     async function checkActiveLiveTests() {
-      if (!currentUser || !currentUser.id) return;
-
       try {
-        const res = await fetch("/api/student/active-live-tests", {
-          headers: {
-            "X-User-Id": currentUser.id,
-            "X-User-Role": currentUser.role || "student"
-          }
-        });
+        const headers = {
+          "X-User-Role": currentUser?.role || "student"
+        };
+        if (currentUser?.id) {
+          headers["X-User-Id"] = currentUser.id;
+        }
+
+        const res = await fetch("/api/student/active-live-tests", { headers });
         if (!res.ok) return;
 
         const data = await res.json();
@@ -167,6 +167,11 @@
           document.getElementById("active-test-info").textContent = 
             `O'qituvchi: ${test.teacherName || 'Ustoz'} • Guruh: ${test.groupName || 'Umumiy'} • ${test.questionsCount || 10} ta savol`;
           document.getElementById("btn-join-live-test").href = `/student/live-test.html?code=${test.code}`;
+
+          const pinInput = document.getElementById("pin-input");
+          if (pinInput && !pinInput.value) {
+            pinInput.placeholder = test.code;
+          }
 
           activeCard.classList.remove("hidden");
           noTestCard.classList.add("hidden");

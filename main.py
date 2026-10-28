@@ -2367,8 +2367,6 @@ async def get_live_test_history(request: Request):
 @app.get("/api/student/active-live-tests")
 async def get_student_active_live_tests(request: Request):
     user_id = request.headers.get("X-User-Id")
-    if not user_id:
-        return {"activeTests": []}
 
     db = SessionLocal()
     try:
@@ -2384,7 +2382,7 @@ async def get_student_active_live_tests(request: Request):
                 s.status = "finished"
         db.commit()
 
-        user = db.query(UserModel).filter(UserModel.id == user_id).first()
+        user = db.query(UserModel).filter(UserModel.id == user_id).first() if user_id else None
         student_group = user.groupId if user else None
 
         active_sessions = db.query(LiveTestSessionModel).filter(
@@ -2393,7 +2391,8 @@ async def get_student_active_live_tests(request: Request):
 
         results = []
         for s in active_sessions:
-            if s.groupId == "all" or s.groupId == student_group or not s.groupId:
+            # If user has no specific group or session is for all or group matches
+            if not student_group or s.groupId == "all" or not s.groupId or s.groupId == student_group:
                 results.append({
                     "id": s.id,
                     "code": s.code,
